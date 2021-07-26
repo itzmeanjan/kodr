@@ -95,3 +95,17 @@ func (m *Matrix) Rref(field *galoisfield.GF) Matrix {
 
 	return *copied
 }
+
+func (m *Matrix) Rank(field *galoisfield.GF) uint {
+	rref := m.Rref(field)
+	var count uint
+	for i := range rref {
+		for j := range rref {
+			if rref[i][j] == 1 {
+				count += 1
+				break
+			}
+		}
+	}
+	return count
+}
