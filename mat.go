@@ -159,3 +159,26 @@ func (m *Matrix) Rank(field *galoisfield.GF) uint {
 	rref := m.Rref(field)
 	return rref.rank()
 }
+
+func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) Matrix {
+	if m.cols() != with.rows() {
+		return nil
+	}
+
+	mult := make([][]byte, m.rows())
+	for i := 0; i < len(*m); i++ {
+		mult[i] = make([]byte, with.cols())
+	}
+
+	for i := 0; i < int(m.rows()); i++ {
+		for j := 0; j < int(with.cols()); j++ {
+
+			for k := 0; k < int(m.cols()); k++ {
+				mult[i][j] = field.Add(mult[i][j], field.Mul((*m)[i][k], with[k][j]))
+			}
+
+		}
+	}
+
+	return mult
+}
