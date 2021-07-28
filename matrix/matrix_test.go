@@ -2,9 +2,11 @@ package matrix_test
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/matrix"
 )
 
@@ -57,7 +59,12 @@ func TestMultiplication(t *testing.T) {
 
 	m_1 := matrix.Matrix{{102, 82, 165, 0}}
 	m_2 := matrix.Matrix{{157, 233, 247}, {160, 28, 233}, {149, 234, 117}, {200, 181, 55}}
+	m_3 := matrix.Matrix{{1, 2, 3}}
 	expected := matrix.Matrix{{186, 23, 11}}
+
+	if _, err := m_3.Multiply(field, m_2); !(err != nil && errors.Is(err, kodr.ErrMatrixDimensionMismatch)) {
+		t.Fatal("expected failed matrix multiplication error indication")
+	}
 
 	mult, err := m_1.Multiply(field, m_2)
 	if err != nil {
