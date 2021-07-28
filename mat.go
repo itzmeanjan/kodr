@@ -72,6 +72,48 @@ func add(a []byte, b []byte, field *galoisfield.GF) []byte {
 	return c
 }
 
+func (m *Matrix) swap(i, j int) {
+	tmp := make([]byte, len((*m)[i]))
+	copy(tmp, (*m)[i])
+	(*m)[i] = (*m)[j]
+	(*m)[j] = tmp
+}
+
+func (m *Matrix) reorder() {
+	for i := 0; i < int(m.rows()); i++ {
+		pivot_i := pivot((*m)[i])
+
+		for j := i + 1; j < int(m.rows()); j++ {
+			pivot_j := pivot((*m)[j])
+			if pivot_i > pivot_j || pivot_i == -1 {
+				m.swap(i, j)
+				i = 0
+			}
+		}
+	}
+}
+
+func (m *Matrix) zeroRow(row int) bool {
+	yes := true
+	for i := 0; i < int(m.cols()); i++ {
+		if (*m)[row][i] != 0 {
+			return false
+		}
+	}
+	return yes
+}
+
+func (m *Matrix) clean() {
+	for i := 0; i < int(m.rows()); i++ {
+		if m.zeroRow(i) {
+			(*m)[i] = nil
+			copy((*m)[i:], (*m)[i+1:])
+			*m = (*m)[:len(*m)-1]
+			i = i - 1
+		}
+	}
+}
+
 func (m *Matrix) Rref(field *galoisfield.GF) Matrix {
 	copied := new(Matrix)
 	copied.copy(*m)
@@ -93,6 +135,8 @@ func (m *Matrix) Rref(field *galoisfield.GF) Matrix {
 		}
 	}
 
+	copied.clean()
+	copied.reorder()
 	return *copied
 }
 
