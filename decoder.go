@@ -7,7 +7,7 @@ type Decoder struct {
 	useful   uint
 	received uint
 	field    *galoisfield.GF
-	pieces   []CodedPiece
+	pieces   []*CodedPiece
 	rref     Matrix
 }
 
@@ -20,7 +20,7 @@ func (d *Decoder) PieceLength() uint {
 // coding vector. After every new coded piece reception
 // augmented matrix ( coding vector + coded piece )
 // is rref-ed, to keep it ready for decoding
-func (d *Decoder) AddPiece(piece CodedPiece) {
+func (d *Decoder) AddPiece(piece *CodedPiece) {
 	d.pieces = append(d.pieces, piece)
 	d.received++
 	if !(d.received > 1) {
@@ -65,4 +65,8 @@ func (d *Decoder) GetPieces() []Piece {
 		pieces = append(pieces, d.GetPiece(uint(i)))
 	}
 	return pieces
+}
+
+func NewDecoder(pieceCount uint) *Decoder {
+	return &Decoder{expected: pieceCount, field: galoisfield.DefaultGF256, pieces: make([]*CodedPiece, 0)}
 }

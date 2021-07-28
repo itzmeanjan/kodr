@@ -10,7 +10,7 @@ func TestRref(t *testing.T) {
 	field := galoisfield.DefaultGF256
 
 	m_1 := Matrix{{70, 137, 2, 152}, {223, 92, 234, 98}, {217, 141, 33, 44}, {145, 135, 71, 45}}
-	m_1_rref := Matrix{{1, 0, 0, 105}, {0, 1, 0, 181}, {0, 0, 1, 42}, {0, 0, 0, 0}}
+	m_1_rref := Matrix{{1, 0, 0, 105}, {0, 1, 0, 181}, {0, 0, 1, 42}}
 	rref := m_1.Rref(field)
 	if !rref.cmp(m_1_rref) {
 		t.Fatal("rref doesn't match !")
