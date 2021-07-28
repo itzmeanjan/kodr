@@ -1,18 +1,21 @@
-package kodr
+package full_test
 
 import (
 	"bytes"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/full"
 )
 
 // Generates N-many pieces each of M-bytes length, to be used
 // for testing purposes
-func generatePieces(pieceCount uint, pieceLength uint) []Piece {
-	pieces := make([]Piece, 0, pieceCount)
+func generatePieces(pieceCount uint, pieceLength uint) []kodr.Piece {
+	pieces := make([]kodr.Piece, 0, pieceCount)
 	for i := 0; i < int(pieceCount); i++ {
-		piece := make(Piece, pieceLength)
+		piece := make(kodr.Piece, pieceLength)
 		// ignoring error, it does happen
 		rand.Read(piece)
 		pieces = append(pieces, piece)
@@ -27,14 +30,14 @@ func TestEncoder(t *testing.T) {
 	pieceLength := 8192
 	codedPieceCount := pieceCount + 2
 	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
-	enc := NewEncoder(pieces)
+	enc := full.NewFullRLNCEncoder(pieces)
 
-	coded := make([]*CodedPiece, 0, codedPieceCount)
+	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
 		coded = append(coded, enc.CodedPiece())
 	}
 
-	dec := NewDecoder(uint(pieceCount))
+	dec := full.NewFullRLNCDecoder(uint(pieceCount))
 	for i := 0; i < codedPieceCount; i++ {
 		dec.AddPiece(coded[i])
 	}

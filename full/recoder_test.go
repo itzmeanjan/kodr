@@ -1,29 +1,42 @@
-package kodr
+package full_test
 
 import (
 	"bytes"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/full"
 )
 
-func TestDecoder(t *testing.T) {
+func TestRecoder(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	pieceCount := 128
 	pieceLength := 8192
 	codedPieceCount := pieceCount + 2
 	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
-	enc := NewEncoder(pieces)
+	enc := full.NewFullRLNCEncoder(pieces)
 
-	coded := make([]*CodedPiece, 0, codedPieceCount)
+	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
 		coded = append(coded, enc.CodedPiece())
 	}
 
-	dec := NewDecoder(uint(pieceCount))
+	rec := full.NewFullRLNCRecoder(coded)
+	recoded := make([]*kodr.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
-		dec.AddPiece(coded[i])
+		rec_p := rec.CodedPiece()
+		if rec_p == nil {
+			t.Fatal("recoding failed !")
+		}
+		recoded = append(recoded, rec_p)
+	}
+
+	dec := full.NewFullRLNCDecoder(uint(pieceCount))
+	for i := 0; i < codedPieceCount; i++ {
+		dec.AddPiece(recoded[i])
 	}
 
 	d_pieces := dec.GetPieces()

@@ -28,8 +28,8 @@ type CodingVector []byte
 // Coded piece along with randomly generated coding vector
 // to be used by recoder/ decoder
 type CodedPiece struct {
-	vector CodingVector
-	piece  Piece
+	Vector CodingVector
+	Piece  Piece
 }
 
 // Flattens coded piece into single byte
@@ -37,9 +37,9 @@ type CodedPiece struct {
 // decoding steps can be performed -- rref
 // on received data matrix
 func (c *CodedPiece) Flatten() []byte {
-	res := make([]byte, len(c.vector)+len(c.piece))
-	copy(res[:len(c.vector)], c.vector)
-	copy(res[len(c.vector):], c.piece)
+	res := make([]byte, len(c.Vector)+len(c.Piece))
+	copy(res[:len(c.Vector)], c.Vector)
+	copy(res[len(c.Vector):], c.Piece)
 	return res
 }
 
