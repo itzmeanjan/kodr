@@ -33,7 +33,7 @@ type Encoder struct {
 	pieces []Piece
 }
 
-func (e *Encoder) generateCodingVector(n uint) CodingVector {
+func generateCodingVector(n uint) CodingVector {
 	vector := make(CodingVector, n)
 	// ignoring error, because it always succeeds
 	rand.Read(vector)
@@ -42,7 +42,7 @@ func (e *Encoder) generateCodingVector(n uint) CodingVector {
 
 func (e *Encoder) CodedPiece() *CodedPiece {
 	pieceCount := uint(len(e.pieces))
-	vector := e.generateCodingVector(pieceCount)
+	vector := generateCodingVector(pieceCount)
 	piece := make(Piece, len(e.pieces[0]))
 	for i := range e.pieces {
 		piece.multiply(e.pieces[i], vector[i], e.field)
