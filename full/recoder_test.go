@@ -2,6 +2,7 @@ package full_test
 
 import (
 	"bytes"
+	"errors"
 	"math/rand"
 	"testing"
 	"time"
@@ -37,6 +38,12 @@ func TestRecoder(t *testing.T) {
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
 	for i := 0; i < pieceCount; i++ {
 		dec.AddPiece(recoded[i])
+	}
+
+	for i := 0; i < codedPieceCount-pieceCount; i++ {
+		if err := dec.AddPiece(recoded[pieceCount+i]); !(err != nil && errors.Is(err, kodr.ErrAllUsefulPiecesReceived)) {
+			t.Fatal("expected error indication, received nothing !")
+		}
 	}
 
 	d_pieces, err := dec.GetPieces()

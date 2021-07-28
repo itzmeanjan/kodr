@@ -2,6 +2,7 @@ package full_test
 
 import (
 	"bytes"
+	"errors"
 	"math/rand"
 	"testing"
 	"time"
@@ -41,6 +42,12 @@ func TestEncoder(t *testing.T) {
 	for i := 0; i < pieceCount; i++ {
 		if err := dec.AddPiece(coded[i]); err != nil {
 			t.Fatal(err.Error())
+		}
+	}
+
+	for i := 0; i < codedPieceCount-pieceCount; i++ {
+		if err := dec.AddPiece(coded[pieceCount+i]); !(err != nil && errors.Is(err, kodr.ErrAllUsefulPiecesReceived)) {
+			t.Fatal("expected error indication, received nothing !")
 		}
 	}
 
