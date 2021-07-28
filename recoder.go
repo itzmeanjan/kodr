@@ -22,10 +22,10 @@ func (r *Recoder) fill() {
 
 func (r *Recoder) CodedPiece() *CodedPiece {
 	pieceCount := uint(len(r.pieces))
-	vector := generateCodingVector(pieceCount)
+	vector := GenerateCodingVector(pieceCount)
 	piece := make(Piece, len(r.pieces[0].piece))
 	for i := range r.pieces {
-		piece.multiply(r.pieces[i].piece, vector[i], r.field)
+		piece.Multiply(r.pieces[i].piece, vector[i], r.field)
 	}
 
 	vector_ := matrix.Matrix{vector}

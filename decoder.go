@@ -36,12 +36,12 @@ func (d *Decoder) AddPiece(piece *CodedPiece) {
 	if d.rref == nil {
 		rref := make(matrix.Matrix, d.received)
 		for i := range rref {
-			rref[i] = d.pieces[i].flatten()
+			rref[i] = d.pieces[i].Flatten()
 		}
 
 		d.rref = rref
 	} else {
-		d.rref = append(d.rref, piece.flatten())
+		d.rref = append(d.rref, piece.Flatten())
 	}
 
 	d.rref = d.rref.Rref(d.field)
