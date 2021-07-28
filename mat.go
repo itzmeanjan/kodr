@@ -96,16 +96,22 @@ func (m *Matrix) Rref(field *galoisfield.GF) Matrix {
 	return *copied
 }
 
-func (m *Matrix) Rank(field *galoisfield.GF) uint {
-	rref := m.Rref(field)
+// rank - Expected to be invoked on row reduced matrix
+// so that ( sometimes ) rref step can be skipped
+func (m *Matrix) rank() uint {
 	var count uint
-	for i := range rref {
-		for j := range rref {
-			if rref[i][j] == 1 {
+	for i := range *m {
+		for j := range *m {
+			if (*m)[i][j] == 1 {
 				count += 1
 				break
 			}
 		}
 	}
 	return count
+}
+
+func (m *Matrix) Rank(field *galoisfield.GF) uint {
+	rref := m.Rref(field)
+	return rref.rank()
 }

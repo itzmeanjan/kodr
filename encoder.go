@@ -21,6 +21,13 @@ type CodedPiece struct {
 	piece  Piece
 }
 
+func (c *CodedPiece) flatten() []byte {
+	res := make([]byte, len(c.vector)+len(c.piece))
+	copy(res[:len(c.vector)], c.vector)
+	copy(res[len(c.vector):], c.piece)
+	return res
+}
+
 type Encoder struct {
 	field  *galoisfield.GF
 	pieces []Piece
