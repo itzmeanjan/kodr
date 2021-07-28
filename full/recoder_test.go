@@ -27,21 +27,21 @@ func TestRecoder(t *testing.T) {
 	rec := full.NewFullRLNCRecoder(coded)
 	recoded := make([]*kodr.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
-		rec_p := rec.CodedPiece()
-		if rec_p == nil {
-			t.Fatal("recoding failed !")
+		rec_p, err := rec.CodedPiece()
+		if err != nil {
+			t.Fatal(err.Error())
 		}
 		recoded = append(recoded, rec_p)
 	}
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < codedPieceCount; i++ {
+	for i := 0; i < pieceCount; i++ {
 		dec.AddPiece(recoded[i])
 	}
 
-	d_pieces := dec.GetPieces()
-	if d_pieces == nil {
-		t.Fatal("decoding failed !")
+	d_pieces, err := dec.GetPieces()
+	if err != nil {
+		t.Fatal(err.Error())
 	}
 
 	if len(pieces) != len(d_pieces) {

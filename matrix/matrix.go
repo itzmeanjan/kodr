@@ -2,6 +2,7 @@ package matrix
 
 import (
 	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr"
 )
 
 type Matrix [][]byte
@@ -170,9 +171,9 @@ func (m *Matrix) Rank(field *galoisfield.GF) uint {
 
 // Multiply - Multiplies two matrices ( which can be multiplied )
 // in order `m x with`
-func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) Matrix {
+func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) (Matrix, error) {
 	if m.Cols() != with.Rows() {
-		return nil
+		return nil, kodr.ErrMatrixDimensionMismatch
 	}
 
 	mult := make([][]byte, m.Rows())
@@ -190,5 +191,5 @@ func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) Matrix {
 		}
 	}
 
-	return mult
+	return mult, nil
 }

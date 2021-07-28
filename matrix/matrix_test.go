@@ -59,9 +59,9 @@ func TestMultiplication(t *testing.T) {
 	m_2 := matrix.Matrix{{157, 233, 247}, {160, 28, 233}, {149, 234, 117}, {200, 181, 55}}
 	expected := matrix.Matrix{{186, 23, 11}}
 
-	mult := m_1.Multiply(field, m_2)
-	if mult.Rows() != expected.Rows() || mult.Cols() != expected.Cols() {
-		t.Fatal("dimension mismatch !")
+	mult, err := m_1.Multiply(field, m_2)
+	if err != nil {
+		t.Fatal(err.Error())
 	}
 
 	for i := 0; i < int(expected.Rows()); i++ {

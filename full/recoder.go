@@ -24,7 +24,7 @@ func (r *FullRLNCRecoder) fill() {
 // Returns recoded piece, which is constructed on-the-fly
 // by randomly drawing some coding coefficients from
 // finite field & performing full RLNC with all coded pieces
-func (r *FullRLNCRecoder) CodedPiece() *kodr.CodedPiece {
+func (r *FullRLNCRecoder) CodedPiece() (*kodr.CodedPiece, error) {
 	pieceCount := uint(len(r.pieces))
 	vector := kodr.GenerateCodingVector(pieceCount)
 	piece := make(kodr.Piece, len(r.pieces[0].Piece))
@@ -33,15 +33,15 @@ func (r *FullRLNCRecoder) CodedPiece() *kodr.CodedPiece {
 	}
 
 	vector_ := matrix.Matrix{vector}
-	mult := vector_.Multiply(r.field, r.codingMatrix)
-	if mult == nil {
-		return nil
+	mult, err := vector_.Multiply(r.field, r.codingMatrix)
+	if err != nil {
+		return nil, err
 	}
 
 	return &kodr.CodedPiece{
 		Vector: mult[0],
 		Piece:  piece,
-	}
+	}, nil
 }
 
 // Provide with all coded pieces, which are to be used

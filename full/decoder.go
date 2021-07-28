@@ -25,14 +25,18 @@ func (d *FullRLNCDecoder) PieceLength() uint {
 // augmented matrix ( coding vector + coded piece )
 // is rref-ed, to keep it as ready as possible for consuming
 // decoded pieces
-func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) {
+func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 	d.pieces = append(d.pieces, piece)
 	d.received++
 	if !(d.received > 1) {
-		return
+		return nil
 	}
+	// no more piece collection is required, decoding
+	// has been performed successfully
+	//
+	// good time to start reading decoded pieces
 	if d.useful >= d.expected {
-		return
+		return kodr.ErrAllUsefulPiecesReceived
 	}
 
 	if d.rref == nil {
@@ -48,30 +52,34 @@ func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) {
 
 	d.rref = d.rref.Rref(d.field)
 	d.useful = d.rref.Rank_()
+	return nil
 }
 
 // GetPiece - Get a decoded piece by index, given full
 // decoding has happened
-func (d *FullRLNCDecoder) GetPiece(i uint) kodr.Piece {
+func (d *FullRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
 	if !(d.useful >= d.expected) || i >= d.useful {
-		return nil
+		return nil, kodr.ErrMoreUsefulPiecesRequired
 	}
 
-	return d.rref[i][uint(len(d.rref[i]))-d.PieceLength():]
+	return d.rref[i][uint(len(d.rref[i]))-d.PieceLength():], nil
 }
 
 // GetPieces - Get a list of all decoded pieces, given full
 // decoding has happened
-func (d *FullRLNCDecoder) GetPieces() []kodr.Piece {
+func (d *FullRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 	if !(d.useful >= d.expected) {
-		return nil
+		return nil, kodr.ErrMoreUsefulPiecesRequired
 	}
 
 	pieces := make([]kodr.Piece, 0, d.useful)
 	for i := 0; i < int(d.useful); i++ {
-		pieces = append(pieces, d.GetPiece(uint(i)))
+		// safe to ignore error, because I've
+		// already checked it above
+		piece, _ := d.GetPiece(uint(i))
+		pieces = append(pieces, piece)
 	}
-	return pieces
+	return pieces, nil
 }
 
 // If minimum #-of linearly independent coded pieces required

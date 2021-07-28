@@ -25,13 +25,13 @@ func TestDecoder(t *testing.T) {
 	}
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < codedPieceCount; i++ {
+	for i := 0; i < pieceCount; i++ {
 		dec.AddPiece(coded[i])
 	}
 
-	d_pieces := dec.GetPieces()
-	if d_pieces == nil {
-		t.Fatal("decoding failed !")
+	d_pieces, err := dec.GetPieces()
+	if err != nil {
+		t.Fatal(err.Error())
 	}
 
 	if len(pieces) != len(d_pieces) {

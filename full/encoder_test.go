@@ -38,13 +38,15 @@ func TestEncoder(t *testing.T) {
 	}
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < codedPieceCount; i++ {
-		dec.AddPiece(coded[i])
+	for i := 0; i < pieceCount; i++ {
+		if err := dec.AddPiece(coded[i]); err != nil {
+			t.Fatal(err.Error())
+		}
 	}
 
-	d_pieces := dec.GetPieces()
-	if d_pieces == nil {
-		t.Fatal("decoding failed !")
+	d_pieces, err := dec.GetPieces()
+	if err != nil {
+		t.Fatal(err.Error())
 	}
 
 	if len(pieces) != len(d_pieces) {
