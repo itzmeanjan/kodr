@@ -1,6 +1,7 @@
 package kodr
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/cloud9-tools/go-galoisfield"
@@ -47,5 +48,24 @@ func TestRank(t *testing.T) {
 	m_3 := Matrix{{100, 31, 76, 199, 119}, {207, 34, 207, 208, 18}, {62, 20, 54, 6, 187}, {66, 8, 52, 73, 54}, {122, 138, 247, 211, 165}}
 	if rank := m_3.Rank(field); rank != 5 {
 		t.Fatalf("expected rank 5, received %d", rank)
+	}
+}
+
+func TestMultiplication(t *testing.T) {
+	field := galoisfield.DefaultGF256
+
+	m_1 := Matrix{{102, 82, 165, 0}}
+	m_2 := Matrix{{157, 233, 247}, {160, 28, 233}, {149, 234, 117}, {200, 181, 55}}
+	expected := Matrix{{186, 23, 11}}
+
+	mult := m_1.Multiply(field, m_2)
+	if mult.rows() != expected.rows() || mult.cols() != expected.cols() {
+		t.Fatal("dimension mismatch !")
+	}
+
+	for i := 0; i < int(expected.rows()); i++ {
+		if !bytes.Equal(expected[i], mult[i]) {
+			t.Fatal("row mismatch !")
+		}
 	}
 }
