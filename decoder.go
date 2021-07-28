@@ -1,6 +1,9 @@
 package kodr
 
-import "github.com/cloud9-tools/go-galoisfield"
+import (
+	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr/matrix"
+)
 
 type Decoder struct {
 	expected uint
@@ -8,7 +11,7 @@ type Decoder struct {
 	received uint
 	field    *galoisfield.GF
 	pieces   []*CodedPiece
-	rref     Matrix
+	rref     matrix.Matrix
 }
 
 // PieceLength - Returns piece length in bytes
@@ -31,7 +34,7 @@ func (d *Decoder) AddPiece(piece *CodedPiece) {
 	}
 
 	if d.rref == nil {
-		rref := make(Matrix, d.received)
+		rref := make(matrix.Matrix, d.received)
 		for i := range rref {
 			rref[i] = d.pieces[i].flatten()
 		}
@@ -42,7 +45,7 @@ func (d *Decoder) AddPiece(piece *CodedPiece) {
 	}
 
 	d.rref = d.rref.Rref(d.field)
-	d.useful = d.rref.rank()
+	d.useful = d.rref.Rank_()
 }
 
 // GetPiece - Get a decoded piece by index

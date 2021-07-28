@@ -1,15 +1,18 @@
 package kodr
 
-import "github.com/cloud9-tools/go-galoisfield"
+import (
+	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr/matrix"
+)
 
 type Recoder struct {
 	field        *galoisfield.GF
 	pieces       []*CodedPiece
-	codingMatrix Matrix
+	codingMatrix matrix.Matrix
 }
 
 func (r *Recoder) fill() {
-	codingMatrix := make(Matrix, len(r.pieces))
+	codingMatrix := make(matrix.Matrix, len(r.pieces))
 	for i := 0; i < len(r.pieces); i++ {
 		codingMatrix[i] = make([]byte, len(r.pieces[i].vector))
 		copy(codingMatrix[i], r.pieces[i].vector)
@@ -25,7 +28,7 @@ func (r *Recoder) CodedPiece() *CodedPiece {
 		piece.multiply(r.pieces[i].piece, vector[i], r.field)
 	}
 
-	vector_ := Matrix{vector}
+	vector_ := matrix.Matrix{vector}
 	mult := vector_.Multiply(r.field, r.codingMatrix)
 	if mult == nil {
 		return nil
