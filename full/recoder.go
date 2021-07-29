@@ -53,3 +53,16 @@ func NewFullRLNCRecoder(pieces []*kodr.CodedPiece) *FullRLNCRecoder {
 	rec.fill()
 	return rec
 }
+
+// A byte slice which is formed by concatenating coded pieces,
+// will be splitted into structured coded pieces ( read having two components
+// i.e. coding vector & piece ) & recoder to be returned, which can be used
+// for on-the-fly random piece recoding
+func NewFullRLNCRecoderWithFlattenData(data []byte, pieceCount uint, piecesCodedTogether uint) (*FullRLNCRecoder, error) {
+	codedPieces, err := kodr.CodedPiecesForRecoding(data, pieceCount, piecesCodedTogether)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFullRLNCRecoder(codedPieces), nil
+}

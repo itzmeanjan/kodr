@@ -11,21 +11,7 @@ import (
 	"github.com/itzmeanjan/kodr/full"
 )
 
-func TestNewFullRLNCRecoder(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
-	pieceCount := 128
-	pieceLength := 8192
-	codedPieceCount := pieceCount + 2
-	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
-	enc := full.NewFullRLNCEncoder(pieces)
-
-	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
-	for i := 0; i < codedPieceCount; i++ {
-		coded = append(coded, enc.CodedPiece())
-	}
-
-	rec := full.NewFullRLNCRecoder(coded)
+func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, codedPieceCount, pieceCount int, pieces []kodr.Piece) {
 	recoded := make([]*kodr.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
 		rec_p, err := rec.CodedPiece()
@@ -66,4 +52,49 @@ func TestNewFullRLNCRecoder(t *testing.T) {
 			t.Fatal("decoded data doesn't match !")
 		}
 	}
+}
+
+func TestNewFullRLNCRecoder(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	pieceCount := 128
+	pieceLength := 8192
+	codedPieceCount := pieceCount + 2
+	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
+	enc := full.NewFullRLNCEncoder(pieces)
+
+	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
+	for i := 0; i < codedPieceCount; i++ {
+		coded = append(coded, enc.CodedPiece())
+	}
+
+	rec := full.NewFullRLNCRecoder(coded)
+	recoderFlow(t, rec, codedPieceCount, pieceCount, pieces)
+}
+
+func TestNewFullRLNCRecoderWithFlattenData(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	pieceCount := 128
+	pieceLength := 8192
+	codedPieceCount := pieceCount + 2
+	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
+	enc := full.NewFullRLNCEncoder(pieces)
+
+	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
+	for i := 0; i < codedPieceCount; i++ {
+		coded = append(coded, enc.CodedPiece())
+	}
+
+	codedFlattened := make([]byte, 0)
+	for i := 0; i < len(coded); i++ {
+		codedFlattened = append(codedFlattened, coded[i].Flatten()...)
+	}
+
+	rec, err := full.NewFullRLNCRecoderWithFlattenData(codedFlattened, uint(codedPieceCount), uint(pieceCount))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	recoderFlow(t, rec, codedPieceCount, pieceCount, pieces)
 }
