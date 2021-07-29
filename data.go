@@ -2,6 +2,7 @@ package kodr
 
 import (
 	"crypto/rand"
+	"math"
 
 	"github.com/cloud9-tools/go-galoisfield"
 )
@@ -52,4 +53,50 @@ func GenerateCodingVector(n uint) CodingVector {
 	// ignoring error, because it always succeeds
 	rand.Read(vector)
 	return vector
+}
+
+// Given whole chunk of data & desired size of each pieces ( in terms of bytes ),
+// it'll split chunk into pieces, which are to be used by encoder for performing RLNC
+//
+// In case whole data chunk can't be properly divided into pieces of requested size,
+// extra zero bytes may be appended at end, considered as padding bytes --- given that
+// each piece must be of same size
+func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, error) {
+	if pieceSize == 0 {
+		return nil, ErrZeroPieceSize
+	}
+
+	if int(pieceSize) > len(data) {
+		return nil, ErrPieceSizeMoreThanTotalBytes
+	}
+
+	pieceCount := int(math.Ceil(float64(len(data)) / float64(pieceSize)))
+	data_ := make([]byte, pieceCount*int(pieceSize))
+	if n := copy(data_, data); n != len(data) {
+		return nil, ErrCopyFailedDuringPieceConstruction
+	}
+
+	pieces := make([]Piece, pieceCount)
+	for i := 0; i < pieceCount; i++ {
+		piece := data_[int(pieceSize)*i : int(pieceSize)*(i+1)]
+		pieces[i] = piece
+	}
+
+	return pieces, nil
+}
+
+// When you want to split whole data chunk into N-many original pieces, this function
+// will do it, while appending extra zero bytes ( read padding bytes ) at end of last piece
+// if exact division is not feasible
+func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece, error) {
+	if pieceCount == 0 {
+		return nil, ErrZeroPieceCount
+	}
+
+	if int(pieceCount) > len(data) {
+		return nil, ErrPieceCountMoreThanTotalBytes
+	}
+
+	pieceSize := uint(math.Ceil(float64(len(data)) / float64(pieceCount)))
+	return OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 }

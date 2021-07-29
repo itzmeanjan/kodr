@@ -33,3 +33,11 @@ func (e *FullRLNCEncoder) CodedPiece() *kodr.CodedPiece {
 func NewFullRLNCEncoder(pieces []kodr.Piece) *FullRLNCEncoder {
 	return &FullRLNCEncoder{pieces: pieces, field: galoisfield.DefaultGF256}
 }
+
+func NewFullRLNCEncoderWithPieceCount(data []byte, pieceCount uint) *FullRLNCEncoder {
+	return NewFullRLNCEncoder(nil)
+}
+
+func NewFullRLNCEncoderWithPieceSize(data []byte, pieceSize uint) *FullRLNCEncoder {
+	return NewFullRLNCEncoder(nil)
+}
