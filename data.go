@@ -71,9 +71,15 @@ func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, e
 	}
 
 	pieceCount := int(math.Ceil(float64(len(data)) / float64(pieceSize)))
-	data_ := make([]byte, pieceCount*int(pieceSize))
-	if n := copy(data_, data); n != len(data) {
-		return nil, ErrCopyFailedDuringPieceConstruction
+
+	var data_ []byte
+	if pieceCount*int(pieceSize) != len(data) {
+		data_ = make([]byte, pieceCount*int(pieceSize))
+		if n := copy(data_, data); n != len(data) {
+			return nil, ErrCopyFailedDuringPieceConstruction
+		}
+	} else {
+		data_ = data
 	}
 
 	pieces := make([]Piece, pieceCount)
@@ -98,10 +104,17 @@ func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece,
 	}
 
 	pieceSize := uint(math.Ceil(float64(len(data)) / float64(pieceCount)))
-	data_ := make([]byte, pieceSize*pieceCount)
-	if n := copy(data_, data); n != len(data) {
-		return nil, ErrCopyFailedDuringPieceConstruction
+
+	var data_ []byte
+	if pieceSize*pieceCount != uint(len(data)) {
+		data_ = make([]byte, pieceSize*pieceCount)
+		if n := copy(data_, data); n != len(data) {
+			return nil, ErrCopyFailedDuringPieceConstruction
+		}
+	} else {
+		data_ = data
 	}
+
 	return OriginalPiecesFromDataAndPieceSize(data_, pieceSize)
 }
 
