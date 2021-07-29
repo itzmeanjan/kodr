@@ -34,10 +34,27 @@ func NewFullRLNCEncoder(pieces []kodr.Piece) *FullRLNCEncoder {
 	return &FullRLNCEncoder{pieces: pieces, field: galoisfield.DefaultGF256}
 }
 
-func NewFullRLNCEncoderWithPieceCount(data []byte, pieceCount uint) *FullRLNCEncoder {
-	return NewFullRLNCEncoder(nil)
+// If you know #-of pieces you want to code together, invoking
+// this function splits whole data chunk into N-pieces, with padding
+// bytes appended at end of last piece, if required & prepares
+// full RLNC encoder for obtaining coded pieces
+func NewFullRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*FullRLNCEncoder, error) {
+	pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFullRLNCEncoder(pieces), nil
 }
 
-func NewFullRLNCEncoderWithPieceSize(data []byte, pieceSize uint) *FullRLNCEncoder {
-	return NewFullRLNCEncoder(nil)
+// If you want to have N-bytes piece size for each, this
+// function generates M-many pieces each of N-bytes size, which are ready
+// to be coded together with full RLNC
+func NewFullRLNCEncoderWithPieceSize(data []byte, pieceSize uint) (*FullRLNCEncoder, error) {
+	pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFullRLNCEncoder(pieces), nil
 }
