@@ -1,6 +1,7 @@
 package kodr_test
 
 import (
+	"bytes"
 	"errors"
 	"math/rand"
 	"testing"
@@ -67,5 +68,17 @@ func TestSplitDataBySize(t *testing.T) {
 		if len(pieces[i]) != int(pieceSize) {
 			t.Fatalf("expected piece size of %d bytes; found of %d bytes", pieceSize, len(pieces[i]))
 		}
+	}
+}
+
+func TestCodedPieceFlattening(t *testing.T) {
+	piece := &kodr.CodedPiece{Vector: generateData(2 << 5), Piece: generateData(2 << 10)}
+	flat := piece.Flatten()
+	if len(flat) != len(piece.Piece)+len(piece.Vector) {
+		t.Fatal("coded piece flattening failed")
+	}
+
+	if !bytes.Equal(flat[:len(piece.Vector)], piece.Vector) || !bytes.Equal(flat[len(piece.Vector):], piece.Piece) {
+		t.Fatal("flattened piece doesn't match << vector ++ piece >>")
 	}
 }
