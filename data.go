@@ -66,8 +66,8 @@ func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, e
 		return nil, ErrZeroPieceSize
 	}
 
-	if int(pieceSize) > len(data) {
-		return nil, ErrPieceSizeMoreThanTotalBytes
+	if int(pieceSize) >= len(data) {
+		return nil, ErrBadPieceCount
 	}
 
 	pieceCount := int(math.Ceil(float64(len(data)) / float64(pieceSize)))
@@ -89,8 +89,8 @@ func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, e
 // will do it, while appending extra zero bytes ( read padding bytes ) at end of last piece
 // if exact division is not feasible
 func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece, error) {
-	if pieceCount == 0 {
-		return nil, ErrZeroPieceCount
+	if pieceCount < 2 {
+		return nil, ErrBadPieceCount
 	}
 
 	if int(pieceCount) > len(data) {
@@ -98,5 +98,9 @@ func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece,
 	}
 
 	pieceSize := uint(math.Ceil(float64(len(data)) / float64(pieceCount)))
-	return OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	data_ := make([]byte, pieceSize*pieceCount)
+	if n := copy(data_, data); n != len(data) {
+		return nil, ErrCopyFailedDuringPieceConstruction
+	}
+	return OriginalPiecesFromDataAndPieceSize(data_, pieceSize)
 }

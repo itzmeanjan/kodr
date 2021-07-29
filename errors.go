@@ -8,7 +8,6 @@ var (
 	ErrMoreUsefulPiecesRequired          = errors.New("not enough pieces received yet to decode")
 	ErrCopyFailedDuringPieceConstruction = errors.New("failed to copy whole data before splitting into pieces")
 	ErrPieceCountMoreThanTotalBytes      = errors.New("requested piece count > total bytes of original data")
-	ErrPieceSizeMoreThanTotalBytes       = errors.New("requested piece size > total bytes of original data")
 	ErrZeroPieceSize                     = errors.New("pieces can't be sized as zero byte")
-	ErrZeroPieceCount                    = errors.New("data can't be splitted into zero pieces")
+	ErrBadPieceCount                     = errors.New("minimum 2 pieces required for RLNC")
 )
