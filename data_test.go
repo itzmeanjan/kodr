@@ -90,25 +90,34 @@ func TestCodedPiecesForRecoding(t *testing.T) {
 	size := 6
 	data := generateData(uint(size))
 	pieceCount := 3
+	codedPieceCount := pieceCount + 2
 	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, uint(pieceCount))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	codedPieces := make([]*kodr.CodedPiece, 0, pieceCount)
-	for i := 0; i < pieceCount; i++ {
+	for i := 0; i < codedPieceCount; i++ {
 		codedPieces = append(codedPieces, enc.CodedPiece())
 	}
 
-	flattenedCodedPieces := make([]byte, pieceCount*(pieceCount+size/pieceCount))
-	for i := 0; i < pieceCount; i++ {
+	flattenedCodedPieces := make([]byte, 0)
+	for i := 0; i < codedPieceCount; i++ {
+		// this is where << coding vector ++ coded piece >>
+		// is kept in byte concatenated form
 		flat := codedPieces[i].Flatten()
-		if n := copy(flattenedCodedPieces[len(flat)*i:len(flat)*(i+1)], flat); n != len(flat) {
-			t.Fatal("failed to copy everything !")
-		}
+		flattenedCodedPieces = append(flattenedCodedPieces, flat...)
 	}
 
-	codedPieces_, err := kodr.CodedPiecesForRecoding(flattenedCodedPieces, 3, 3)
+	if _, err := kodr.CodedPiecesForRecoding(flattenedCodedPieces, uint(codedPieceCount)-2, uint(pieceCount)); !(err != nil && errors.Is(err, kodr.ErrCodedDataLengthMismatch)) {
+		t.Fatalf("expected: %s\n", kodr.ErrCodedDataLengthMismatch)
+	}
+
+	if _, err := kodr.CodedPiecesForRecoding(flattenedCodedPieces, uint(codedPieceCount), uint(codedPieceCount)); !(err != nil && errors.Is(err, kodr.ErrCodingVectorLengthMismatch)) {
+		t.Fatalf("expected: %s\n", kodr.ErrCodingVectorLengthMismatch)
+	}
+
+	codedPieces_, err := kodr.CodedPiecesForRecoding(flattenedCodedPieces, uint(codedPieceCount), uint(pieceCount))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
