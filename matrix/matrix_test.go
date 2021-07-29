@@ -10,7 +10,7 @@ import (
 	"github.com/itzmeanjan/kodr/matrix"
 )
 
-func TestRref(t *testing.T) {
+func TestMatrixRref(t *testing.T) {
 	field := galoisfield.DefaultGF256
 
 	m_1 := matrix.Matrix{{70, 137, 2, 152}, {223, 92, 234, 98}, {217, 141, 33, 44}, {145, 135, 71, 45}}
@@ -35,7 +35,7 @@ func TestRref(t *testing.T) {
 	}
 }
 
-func TestRank(t *testing.T) {
+func TestMatrixRank(t *testing.T) {
 	field := galoisfield.DefaultGF256
 
 	m_1 := matrix.Matrix{{70, 137, 2, 152}, {223, 92, 234, 98}, {217, 141, 33, 44}, {145, 135, 71, 45}}
@@ -54,7 +54,7 @@ func TestRank(t *testing.T) {
 	}
 }
 
-func TestMultiplication(t *testing.T) {
+func TestMatrixMultiplication(t *testing.T) {
 	field := galoisfield.DefaultGF256
 
 	m_1 := matrix.Matrix{{102, 82, 165, 0}}

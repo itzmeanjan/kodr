@@ -11,7 +11,7 @@ import (
 	"github.com/itzmeanjan/kodr/full"
 )
 
-func TestRecoder(t *testing.T) {
+func TestNewFullRLNCRecoder(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	pieceCount := 128

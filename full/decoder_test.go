@@ -11,7 +11,7 @@ import (
 	"github.com/itzmeanjan/kodr/full"
 )
 
-func TestDecoder(t *testing.T) {
+func TestNewFullRLNCDecoder(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	pieceCount := 128

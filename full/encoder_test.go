@@ -24,7 +24,7 @@ func generatePieces(pieceCount uint, pieceLength uint) []kodr.Piece {
 	return pieces
 }
 
-func TestEncoder(t *testing.T) {
+func TestNewFullRLNCEncoder(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	pieceCount := 128
