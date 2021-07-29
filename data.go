@@ -104,3 +104,30 @@ func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece,
 	}
 	return OriginalPiecesFromDataAndPieceSize(data_, pieceSize)
 }
+
+// Before recoding can be performed, coded pieces byte array i.e. []<< coding vector ++ coded piece >>
+// where each coded piece is << coding vector ++ coded piece >> ( flattened ) is splitted into
+// structured data i.e. into components {coding vector, coded piece}, where how many coded pieces are
+// present in byte array ( read `data` ) & how many pieces are coded together ( read coding vector length )
+// are provided
+func CodedPiecesForRecoding(data []byte, pieceCount uint, piecesCodedTogether uint) ([]*CodedPiece, error) {
+	codedPieceLength := len(data) / int(pieceCount)
+	if codedPieceLength*int(pieceCount) != len(data) {
+		return nil, ErrCodedDataLengthMismatch
+	}
+
+	if !(piecesCodedTogether < uint(codedPieceLength)) {
+		return nil, ErrCodingVectorLengthMismatch
+	}
+
+	codedPieces := make([]*CodedPiece, pieceCount)
+	for i := 0; i < int(pieceCount); i++ {
+		codedPiece := data[codedPieceLength*i : codedPieceLength*(i+1)]
+		codedPieces[i] = &CodedPiece{
+			Vector: codedPiece[:piecesCodedTogether],
+			Piece:  codedPiece[piecesCodedTogether:],
+		}
+	}
+
+	return codedPieces, nil
+}

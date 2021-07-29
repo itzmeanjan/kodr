@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/full"
 )
 
 // Generates `N`-bytes of random data from default
@@ -80,5 +81,44 @@ func TestCodedPieceFlattening(t *testing.T) {
 
 	if !bytes.Equal(flat[:len(piece.Vector)], piece.Vector) || !bytes.Equal(flat[len(piece.Vector):], piece.Piece) {
 		t.Fatal("flattened piece doesn't match << vector ++ piece >>")
+	}
+}
+
+func TestCodedPiecesForRecoding(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	size := 6
+	data := generateData(uint(size))
+	pieceCount := 3
+	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, uint(pieceCount))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	codedPieces := make([]*kodr.CodedPiece, 0, pieceCount)
+	for i := 0; i < pieceCount; i++ {
+		codedPieces = append(codedPieces, enc.CodedPiece())
+	}
+
+	flattenedCodedPieces := make([]byte, pieceCount*(pieceCount+size/pieceCount))
+	for i := 0; i < pieceCount; i++ {
+		flat := codedPieces[i].Flatten()
+		if n := copy(flattenedCodedPieces[len(flat)*i:len(flat)*(i+1)], flat); n != len(flat) {
+			t.Fatal("failed to copy everything !")
+		}
+	}
+
+	codedPieces_, err := kodr.CodedPiecesForRecoding(flattenedCodedPieces, 3, 3)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	for i := 0; i < len(codedPieces_); i++ {
+		if !bytes.Equal(codedPieces_[i].Vector, codedPieces[i].Vector) {
+			t.Fatal("coding vector mismatch !")
+		}
+
+		if !bytes.Equal(codedPieces_[i].Piece, codedPieces[i].Piece) {
+			t.Fatal("coded piece mismatch !")
+		}
 	}
 }
