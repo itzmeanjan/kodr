@@ -9,12 +9,18 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
 )
 
 func main() {
+	// setting up random number generator seed using time as source
+	// so that RLNC's coding coefficients are generated randomly
+	// on every run
+	rand.Seed(time.Now().UnixNano())
+
 	img := path.Join("..", "..", "img", "logo.png")
 	log.Printf("Reading from %s\n", img)
 	data, err := os.ReadFile(img)
