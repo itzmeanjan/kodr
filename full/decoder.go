@@ -20,6 +20,21 @@ func (d *FullRLNCDecoder) PieceLength() uint {
 	return uint(len(d.pieces[0].Piece))
 }
 
+// IsDecoded - Use it for checking whether more piece
+// collection is required or not
+//
+// If it returns false, denotes more linearly independent pieces
+// need to be collected, only then decoding can be completed
+func (d *FullRLNCDecoder) IsDecoded() bool {
+	return d.useful >= d.expected
+}
+
+// Required - How many more linearly independent pieces
+// are required for successfully decoding pieces ?
+func (d *FullRLNCDecoder) Required() uint {
+	return d.expected - d.useful
+}
+
 // AddPiece - Adds a new received coded piece along with
 // coding vector. After every new coded piece reception
 // augmented matrix ( coding vector + coded piece )
@@ -29,13 +44,14 @@ func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 	d.pieces = append(d.pieces, piece)
 	d.received++
 	if !(d.received > 1) {
+		d.useful++
 		return nil
 	}
 	// no more piece collection is required, decoding
 	// has been performed successfully
 	//
 	// good time to start reading decoded pieces
-	if d.useful >= d.expected {
+	if d.IsDecoded() {
 		return kodr.ErrAllUsefulPiecesReceived
 	}
 
@@ -58,7 +74,7 @@ func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 // GetPiece - Get a decoded piece by index, given full
 // decoding has happened
 func (d *FullRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
-	if !(d.useful >= d.expected) || i >= d.useful {
+	if !d.IsDecoded() || i >= d.useful {
 		return nil, kodr.ErrMoreUsefulPiecesRequired
 	}
 
@@ -68,7 +84,7 @@ func (d *FullRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
 // GetPieces - Get a list of all decoded pieces, given full
 // decoding has happened
 func (d *FullRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
-	if !(d.useful >= d.expected) {
+	if !d.IsDecoded() {
 		return nil, kodr.ErrMoreUsefulPiecesRequired
 	}
 
