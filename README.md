@@ -10,6 +10,10 @@ For sometime now I've been exploring **R**andom **L**inear **N**etwork **C**odin
 
 For all the RLNC-based schemes I implement in **kodr** i.e. _{full RLNC, on-the-fly RLNC, sparse RLNC, generational RLNC, Caterpillar RLNC ...}_, I write respective examples on how exposed API can be used for *encoding, recoding & decoding* binary data.
 
+## Background
+
+For learning about RLNC you may want to go through my [post](https://itzmeanjan.in/pages/rlnc-in-depth.html). In **kodr**, I perform all finite field operations on GF(2\*\*8) --- which is seemingly a good fit, because I consider each byte to be a symbol of RLNC, which is a finite field elements --- 256 of them. Also speaking of performance & memory consumption, GF(2\*\*8) keeps a good balance between these. Working on higher field indeed decreases chance of ( randomly ) generating linearly dependent pieces, but requires more costly computation & if finite field operations are implemented in terms of addition/ multiplication tables then memory consumption increases to a great extent. On the other hand, working on GF(2) increases change of generating linearly dependent pieces, though with sophisticated design like Fulcrum codes, they can be proved to be beneficial. Another point is the higher the finite field, higher is the cost of storing random coding vectors --- because each element of coding vector ( read coding coefficient ) is a finite field element.
+
 ## Installation
 
 Assuming you have Golang (>=1.16) installed, add **kodr** as an dependency to your project, which uses *GOMOD* for dependency management purposes, by executing
@@ -25,6 +29,20 @@ After you clone this repo, you may want to run test cases
 ```bash
 go test -v -cover ./...
 ```
+
+## Benchmarking
+
+I write required testcases for benchmarking performance of encoder, recoder & decoder of all RLNC schemes, while I also present results after running those on consumer grade machine with configuration `Intel(R) Core(TM) i3-5005U CPU @ 2.00GHz`.
+
+### Full RLNC
+
+For benchmarking **encoder** of full RLNC, execute
+
+```bash
+go test -run=xxx -bench=Encoder ./bench/full/
+```
+
+![benchmark_full_encoder](./img/benchmark_full_encoder.png)
 
 ## Usage
 
