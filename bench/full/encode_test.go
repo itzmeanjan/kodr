@@ -1,8 +1,9 @@
 package full_test
 
 import (
-	"crypto/rand"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/itzmeanjan/kodr/full"
 )
@@ -91,6 +92,9 @@ func generateData(n uint) []byte {
 }
 
 func encode(t *testing.B, pieceCount uint, total uint) {
+	// non-reproducible random number sequence
+	rand.Seed(time.Now().UnixNano())
+
 	data := generateData(total)
 	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
 	if err != nil {
