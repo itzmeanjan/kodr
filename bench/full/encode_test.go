@@ -10,23 +10,23 @@ import (
 // Config: 1MB total data chunk; N Pieces, where 16 <= N <= 256
 // -- starts
 
-func BenchmarkEncoderWith1M_16(t *testing.B) {
+func BenchmarkEncoderWith1M_16Pieces(t *testing.B) {
 	encode(t, 16, 1<<20)
 }
 
-func BenchmarkEncoderWith1M_32(t *testing.B) {
+func BenchmarkEncoderWith1M_32Pieces(t *testing.B) {
 	encode(t, 32, 1<<20)
 }
 
-func BenchmarkEncoderWith1M_64(t *testing.B) {
+func BenchmarkEncoderWith1M_64Pieces(t *testing.B) {
 	encode(t, 64, 1<<20)
 }
 
-func BenchmarkEncoderWith1M_128(t *testing.B) {
+func BenchmarkEncoderWith1M_128Pieces(t *testing.B) {
 	encode(t, 128, 1<<20)
 }
 
-func BenchmarkEncoderWith1M_256(t *testing.B) {
+func BenchmarkEncoderWith1M_256Pieces(t *testing.B) {
 	encode(t, 256, 1<<20)
 }
 
@@ -35,23 +35,23 @@ func BenchmarkEncoderWith1M_256(t *testing.B) {
 // Config: 16MB total data chunk; N Pieces, where 16 <= N <= 256
 // -- starts
 
-func BenchmarkEncoderWith16M_16(t *testing.B) {
+func BenchmarkEncoderWith16M_16Pieces(t *testing.B) {
 	encode(t, 16, 16*1<<20)
 }
 
-func BenchmarkEncoderWith16M_32(t *testing.B) {
+func BenchmarkEncoderWith16M_32Pieces(t *testing.B) {
 	encode(t, 32, 16*1<<20)
 }
 
-func BenchmarkEncoderWith16M_64(t *testing.B) {
+func BenchmarkEncoderWith16M_64Pieces(t *testing.B) {
 	encode(t, 64, 16*1<<20)
 }
 
-func BenchmarkEncoderWith16M_128(t *testing.B) {
+func BenchmarkEncoderWith16M_128Pieces(t *testing.B) {
 	encode(t, 128, 16*1<<20)
 }
 
-func BenchmarkEncoderWith16M_256(t *testing.B) {
+func BenchmarkEncoderWith16M_256Pieces(t *testing.B) {
 	encode(t, 256, 16*1<<20)
 }
 
@@ -60,23 +60,23 @@ func BenchmarkEncoderWith16M_256(t *testing.B) {
 // Config: 32MB total data chunk; N Pieces, where 16 <= N <= 256
 // -- starts
 
-func BenchmarkEncoderWith32M_16(t *testing.B) {
+func BenchmarkEncoderWith32M_16Pieces(t *testing.B) {
 	encode(t, 16, 32*1<<20)
 }
 
-func BenchmarkEncoderWith32M_32(t *testing.B) {
+func BenchmarkEncoderWith32M_32Pieces(t *testing.B) {
 	encode(t, 32, 32*1<<20)
 }
 
-func BenchmarkEncoderWith32M_64(t *testing.B) {
+func BenchmarkEncoderWith32M_64Pieces(t *testing.B) {
 	encode(t, 64, 32*1<<20)
 }
 
-func BenchmarkEncoderWith32M_128(t *testing.B) {
+func BenchmarkEncoderWith32M_128Pieces(t *testing.B) {
 	encode(t, 128, 32*1<<20)
 }
 
-func BenchmarkEncoderWith32M_256(t *testing.B) {
+func BenchmarkEncoderWith32M_256Pieces(t *testing.B) {
 	encode(t, 256, 32*1<<20)
 }
 
