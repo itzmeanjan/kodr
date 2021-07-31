@@ -26,9 +26,33 @@ func TestNewFullRLNCDecoder(t *testing.T) {
 	}
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
+	neededPieceCount := uint(pieceCount)
 	for i := 0; i < pieceCount; i++ {
-		if _, err := dec.GetPieces(); !(err != nil && errors.Is(err, kodr.ErrMoreUsefulPiecesRequired)) {
-			t.Fatal("expected error indicating more pieces are required for decoding")
+
+		// test whether required piece count is monotonically decreasing or not
+		switch i {
+		case 0:
+			if req_ := dec.Required(); req_ != neededPieceCount {
+				t.Fatalf("expected still needed piece count to be %d, found it to be %d\n", neededPieceCount, req_)
+			}
+			// skip unnecessary assignment to `needPieceCount`
+
+		default:
+			if req_ := dec.Required(); !(req_ == neededPieceCount || req_ == neededPieceCount-1) {
+				t.Fatal("expected required piece count monotonically decrease by 1")
+			} else {
+				neededPieceCount = req_
+			}
+
+		}
+
+		// check is piece is already decoded or not --- which it should never be
+		// because we're iterating over `pieceCount` #-of pieces & those many
+		// we must need for decoding
+		//
+		// next piece to be added in follow code block
+		if dec.IsDecoded() {
+			t.Fatal("didn't expect it to be decoded already")
 		}
 
 		if err := dec.AddPiece(coded[i]); err != nil {
