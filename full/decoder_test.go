@@ -38,12 +38,11 @@ func TestNewFullRLNCDecoder(t *testing.T) {
 			// skip unnecessary assignment to `needPieceCount`
 
 		default:
-			if req_ := dec.Required(); !(req_ == neededPieceCount || req_ == neededPieceCount-1) {
-				t.Fatal("expected required piece count monotonically decrease by 1")
+			if req_ := dec.Required(); !(req_ <= neededPieceCount) {
+				t.Fatal("expected required piece count to monotonically decrease")
 			} else {
 				neededPieceCount = req_
 			}
-
 		}
 
 		// check is piece is already decoded or not --- which it should never be
