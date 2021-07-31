@@ -8,80 +8,31 @@ import (
 	"github.com/itzmeanjan/kodr/full"
 )
 
-// Config: 1MB total data chunk; N Pieces, where 16 <= N <= 256
-// -- starts
+func BenchmarkFullRLNCEncoder(t *testing.B) {
+	t.Run("1M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { encode(b, 1<<4, 1<<20) })
+		b.Run("32 Pieces", func(b *testing.B) { encode(b, 1<<5, 1<<20) })
+		b.Run("64 Pieces", func(b *testing.B) { encode(b, 1<<6, 1<<20) })
+		b.Run("128 Pieces", func(b *testing.B) { encode(b, 1<<7, 1<<20) })
+		b.Run("256 Pieces", func(b *testing.B) { encode(b, 1<<8, 1<<20) })
+	})
 
-func BenchmarkEncoderWith1M_16Pieces(t *testing.B) {
-	encode(t, 16, 1<<20)
+	t.Run("16M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { encode(b, 1<<4, 1<<24) })
+		b.Run("32 Pieces", func(b *testing.B) { encode(b, 1<<5, 1<<24) })
+		b.Run("64 Pieces", func(b *testing.B) { encode(b, 1<<6, 1<<24) })
+		b.Run("128 Pieces", func(b *testing.B) { encode(b, 1<<7, 1<<24) })
+		b.Run("256 Pieces", func(b *testing.B) { encode(b, 1<<8, 1<<24) })
+	})
+
+	t.Run("32M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { encode(b, 1<<4, 1<<25) })
+		b.Run("32 Pieces", func(b *testing.B) { encode(b, 1<<5, 1<<25) })
+		b.Run("64 Pieces", func(b *testing.B) { encode(b, 1<<6, 1<<25) })
+		b.Run("128 Pieces", func(b *testing.B) { encode(b, 1<<7, 1<<25) })
+		b.Run("256 Pieces", func(b *testing.B) { encode(b, 1<<8, 1<<25) })
+	})
 }
-
-func BenchmarkEncoderWith1M_32Pieces(t *testing.B) {
-	encode(t, 32, 1<<20)
-}
-
-func BenchmarkEncoderWith1M_64Pieces(t *testing.B) {
-	encode(t, 64, 1<<20)
-}
-
-func BenchmarkEncoderWith1M_128Pieces(t *testing.B) {
-	encode(t, 128, 1<<20)
-}
-
-func BenchmarkEncoderWith1M_256Pieces(t *testing.B) {
-	encode(t, 256, 1<<20)
-}
-
-// -- ends
-
-// Config: 16MB total data chunk; N Pieces, where 16 <= N <= 256
-// -- starts
-
-func BenchmarkEncoderWith16M_16Pieces(t *testing.B) {
-	encode(t, 16, 16*1<<20)
-}
-
-func BenchmarkEncoderWith16M_32Pieces(t *testing.B) {
-	encode(t, 32, 16*1<<20)
-}
-
-func BenchmarkEncoderWith16M_64Pieces(t *testing.B) {
-	encode(t, 64, 16*1<<20)
-}
-
-func BenchmarkEncoderWith16M_128Pieces(t *testing.B) {
-	encode(t, 128, 16*1<<20)
-}
-
-func BenchmarkEncoderWith16M_256Pieces(t *testing.B) {
-	encode(t, 256, 16*1<<20)
-}
-
-// -- ends
-
-// Config: 32MB total data chunk; N Pieces, where 16 <= N <= 256
-// -- starts
-
-func BenchmarkEncoderWith32M_16Pieces(t *testing.B) {
-	encode(t, 16, 32*1<<20)
-}
-
-func BenchmarkEncoderWith32M_32Pieces(t *testing.B) {
-	encode(t, 32, 32*1<<20)
-}
-
-func BenchmarkEncoderWith32M_64Pieces(t *testing.B) {
-	encode(t, 64, 32*1<<20)
-}
-
-func BenchmarkEncoderWith32M_128Pieces(t *testing.B) {
-	encode(t, 128, 32*1<<20)
-}
-
-func BenchmarkEncoderWith32M_256Pieces(t *testing.B) {
-	encode(t, 256, 32*1<<20)
-}
-
-// -- ends
 
 // generate random data of N-bytes
 func generateData(n uint) []byte {

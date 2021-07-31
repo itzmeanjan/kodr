@@ -9,36 +9,38 @@ import (
 	"github.com/itzmeanjan/kodr/full"
 )
 
-func BenchmarkDecoderWith256K(t *testing.B) {
-	t.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<18) })
-	t.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<18) })
-	t.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<18) })
-	t.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<18) })
-	t.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<18) })
-}
+func BenchmarkFullRLNCDecoder(t *testing.B) {
+	t.Run("256K", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<18) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<18) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<18) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<18) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<18) })
+	})
 
-func BenchmarkDecoderWith512K(t *testing.B) {
-	t.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<19) })
-	t.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<19) })
-	t.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<19) })
-	t.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<19) })
-	t.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<19) })
-}
+	t.Run("512K", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<19) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<19) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<19) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<19) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<19) })
+	})
 
-func BenchmarkDecoderWith1M(t *testing.B) {
-	t.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<20) })
-	t.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<20) })
-	t.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<20) })
-	t.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<20) })
-	t.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<20) })
-}
+	t.Run("1M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<20) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<20) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<20) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<20) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<20) })
+	})
 
-func BenchmarkDecoderWith2M(t *testing.B) {
-	t.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<21) })
-	t.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<21) })
-	t.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<21) })
-	t.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<21) })
-	t.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<21) })
+	t.Run("2M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<21) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<21) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<21) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<21) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<21) })
+	})
 }
 
 func decode(t *testing.B, pieceCount uint, total uint) {
