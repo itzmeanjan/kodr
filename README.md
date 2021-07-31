@@ -42,7 +42,19 @@ For benchmarking **encoder** of full RLNC, execute
 go test -run=xxx -bench=Encoder ./bench/full/
 ```
 
+> Coding speed at **~ 300MB/s**
+
 ![benchmark_full_encoder](./img/benchmark_full_encoder.png)
+
+Looking at **recoder** performance
+
+```bash
+go test -run=xxx -bench=Recoder ./bench/full/
+```
+
+> Recoding speed at **~ 290MB/s**
+
+![benchmark_full_recoder](./img/benchmark_full_recoder.png)
 
 ## Usage
 
@@ -51,6 +63,8 @@ Examples demonstrating how to use API exposed by **kodr** for _( currently )_ su
 > In each walk through, code snippets are prepended with line numbers, denoting actual line numbers in respective file.
 
 ### Full RLNC
+
+**Example:** `example/full/main.go`
 
 Let's start by seeding random number generator with current unix timestamp with nanosecond level precision.
 
