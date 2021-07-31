@@ -42,11 +42,11 @@ For benchmarking **encoder** of full RLNC, execute
 go test -run=xxx -bench=Encoder ./bench/full/
 ```
 
-> Coding speed at **~ 300MB/s**
+> Coding speed at **~ 290MB/s**
 
 ![benchmark_full_encoder](./img/benchmark_full_encoder.png)
 
-Looking at **recoder** performance
+Looking at full RLNC **recoder** performance
 
 ```bash
 go test -run=xxx -bench=Recoder ./bench/full/
@@ -55,6 +55,12 @@ go test -run=xxx -bench=Recoder ./bench/full/
 > Recoding speed at **~ 290MB/s**
 
 ![benchmark_full_recoder](./img/benchmark_full_recoder.png)
+
+And **decoder** performance denotes each round of full data reconstruction from N-many coded pieces taking `X second`, on average. 
+
+> Note: It can be clearly understood that decoding complexity keeps increasing very fast, when using full RLNC with large data chunks. For decoding 2MB total chunk which is splitted into 256 pieces of equal sized byte slice, it takes ~6s.
+
+![benchmark_full_decoder](./img/benchmark_full_decoder.png)
 
 ## Usage
 
