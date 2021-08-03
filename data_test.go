@@ -131,3 +131,25 @@ func TestCodedPiecesForRecoding(t *testing.T) {
 		}
 	}
 }
+
+func TestIsSystematic(t *testing.T) {
+	piece_1 := kodr.CodedPiece{Vector: []byte{0, 1, 0, 0}, Piece: []byte{1, 2, 3}}
+	if !piece_1.IsSystematic() {
+		t.Fatalf("%v should be systematic\n", piece_1)
+	}
+
+	piece_2 := kodr.CodedPiece{Vector: []byte{1, 1, 0, 0}, Piece: []byte{1, 2, 3}}
+	if piece_2.IsSystematic() {
+		t.Fatalf("%v shouldn't be systematic\n", piece_2)
+	}
+
+	piece_3 := kodr.CodedPiece{Vector: []byte{0, 0, 1, 0}, Piece: []byte{1, 2, 3}}
+	if !piece_3.IsSystematic() {
+		t.Fatalf("%v should be systematic\n", piece_3)
+	}
+
+	piece_4 := kodr.CodedPiece{Vector: []byte{0, 0, 0, 0}, Piece: []byte{1, 2, 3}}
+	if piece_4.IsSystematic() {
+		t.Fatalf("%v shouldn't be systematic\n", piece_4)
+	}
+}
