@@ -28,27 +28,6 @@ func generatePieces(pieceCount uint, pieceLength uint) []kodr.Piece {
 	return pieces
 }
 
-func isSystematicCoded(piece *kodr.CodedPiece) bool {
-	pos := -1
-	for i := 0; i < len(piece.Vector); i++ {
-		switch piece.Vector[i] {
-		case 0:
-			continue
-
-		case 1:
-			if pos != -1 {
-				return false
-			}
-			pos = i
-
-		default:
-			return false
-
-		}
-	}
-	return pos >= 0 && pos < len(piece.Vector)
-}
-
 func TestSystematicRLNCCoding(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
@@ -63,11 +42,11 @@ func TestSystematicRLNCCoding(t *testing.T) {
 	for i := 0; i < int(codedPieceCount); i++ {
 		c_piece := enc.CodedPiece()
 		if i < int(pieceCount) {
-			if !isSystematicCoded(c_piece) {
+			if !c_piece.IsSystematic() {
 				t.Fatal("expected piece to be systematic coded")
 			}
 		} else {
-			if isSystematicCoded(c_piece) {
+			if c_piece.IsSystematic() {
 				t.Fatal("expected piece to be random coded")
 			}
 		}

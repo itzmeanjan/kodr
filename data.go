@@ -44,6 +44,32 @@ func (c *CodedPiece) Flatten() []byte {
 	return res
 }
 
+// Returns true if finds this piece is coded
+// systematically i.e. piece is actually
+// uncoded, just being augmented that it's coded
+// which is why coding vector has only one
+// non-zero element ( 1 )
+func (c *CodedPiece) IsSystematic() bool {
+	pos := -1
+	for i := 0; i < len(c.Vector); i++ {
+		switch c.Vector[i] {
+		case 0:
+			continue
+
+		case 1:
+			if pos != -1 {
+				return false
+			}
+			pos = i
+
+		default:
+			return false
+
+		}
+	}
+	return pos >= 0 && pos < len(c.Vector)
+}
+
 // Generates random coding vector of specified length
 //
 // No specific randomization choice is made, default available
