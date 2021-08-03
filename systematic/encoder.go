@@ -62,3 +62,7 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr.CodedPiece {
 		Piece:  piece,
 	}
 }
+
+func NewSystematicRLNCEncoder(pieces []kodr.Piece) *SystematicRLNCEncoder {
+	return &SystematicRLNCEncoder{currentPieceId: 0, pieces: pieces, field: galoisfield.DefaultGF256}
+}
