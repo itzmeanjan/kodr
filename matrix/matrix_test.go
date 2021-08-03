@@ -77,3 +77,26 @@ func TestMatrixMultiplication(t *testing.T) {
 		}
 	}
 }
+
+func TestMatrixSystematicRREF(t *testing.T) {
+	field := galoisfield.DefaultGF256
+	pieceCount := 6
+	m := matrix.Matrix{
+		{1, 0, 0, 0, 0, 0, 1},
+		{0, 1, 0, 0, 0, 0, 2},
+		{0, 0, 1, 0, 0, 0, 3},
+		{255, 81, 246, 171, 124, 125, 78},
+		{36, 195, 116, 141, 144, 150, 148},
+		{119, 213, 236, 165, 205, 46, 125}}
+	expected := matrix.Matrix{
+		{1, 0, 0, 0, 0, 0, 1},
+		{0, 1, 0, 0, 0, 0, 2},
+		{0, 0, 1, 0, 0, 0, 3},
+		{0, 0, 0, 1, 0, 0, 4},
+		{0, 0, 0, 0, 1, 0, 5},
+		{0, 0, 0, 0, 0, 1, 6}}
+
+	rref := m.SystematicRREF(field, uint(pieceCount))
+	t.Log(expected)
+	t.Log(rref)
+}

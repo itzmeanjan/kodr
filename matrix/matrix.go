@@ -193,3 +193,87 @@ func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) (Matrix, error) {
 
 	return mult, nil
 }
+
+func (m *Matrix) isSystematic(idx int, pieceCount uint) bool {
+	row := (*m)[idx]
+	c_piece := &kodr.CodedPiece{Vector: row[:pieceCount], Piece: row[pieceCount:]}
+	return c_piece.IsSystematic()
+}
+
+func (m *Matrix) systematicReorder(pieceCount uint) [][]int {
+	for i := 0; i < int(m.Rows()); i++ {
+		pivot_i := m.pivot(i)
+
+		for j := i + 1; j < int(m.Rows()); j++ {
+			if m.isSystematic(j, pieceCount) {
+				pivot_j := m.pivot(j)
+				if pivot_i > pivot_j || pivot_i == -1 {
+					m.swap(i, j)
+					i = 0
+				}
+			}
+		}
+	}
+
+	pivots := make([][]int, 0, m.Rows())
+	for i := 0; i < int(m.Rows()); i++ {
+		if !m.isSystematic(i, pieceCount) {
+			break
+		}
+		pivots = append(pivots, []int{i, m.pivot(i)})
+	}
+	return pivots
+}
+
+func (m *Matrix) SystematicRREF(field *galoisfield.GF, pieceCount uint) Matrix {
+	copied := new(Matrix)
+	copied.copy(*m)
+
+	s_indices := copied.systematicReorder(pieceCount)
+	if len(s_indices) == 0 || len(s_indices) == int(copied.Rows()) {
+		return *copied
+	}
+
+	isIn := func(v_ int) bool {
+		for _, v := range s_indices {
+			if v[0] == v_ {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, v := range s_indices {
+		for j := v[0] + 1; j < int(copied.Rows()); j++ {
+			// this row is constructed systematically, skip it
+			if isIn(j) {
+				continue
+			}
+
+			scaled_ := copied.scale(v[0], (*copied)[j][v[1]], field)
+			added_ := add(scaled_, (*copied)[j], field)
+			(*copied)[j] = nil
+			(*copied)[j] = added_
+		}
+	}
+
+	if !(int(copied.Rows())-len(s_indices) > 1) {
+		return *copied
+	}
+
+	p_idx := s_indices[len(s_indices)-1][1]
+	s_matrix := new(Matrix)
+
+	for i := len(s_indices); i < int(copied.Rows()); i++ {
+		r := (*copied)[i][p_idx+1:]
+		*s_matrix = append(*s_matrix, r)
+	}
+
+	s_matrix.copy(s_matrix.Rref(field))
+
+	for i := len(s_indices); i < int(copied.Rows()); i++ {
+		copy((*copied)[i][p_idx+1:], (*s_matrix)[i-len(s_indices)])
+	}
+
+	return *copied
+}
