@@ -63,6 +63,35 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr.CodedPiece {
 	}
 }
 
+// When you've already splitted original data chunk into pieces
+// of same length ( in terms of bytes ), this function can be used
+// for creating one systematic RLNC encoder, which delivers coded pieces
+// on-the-fly
 func NewSystematicRLNCEncoder(pieces []kodr.Piece) *SystematicRLNCEncoder {
 	return &SystematicRLNCEncoder{currentPieceId: 0, pieces: pieces, field: galoisfield.DefaultGF256}
+}
+
+// If you know #-of pieces you want to code together, invoking
+// this function splits whole data chunk into N-pieces, with padding
+// bytes appended at end of last piece, if required & prepares
+// full RLNC encoder for obtaining coded pieces
+func NewSystematicRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*SystematicRLNCEncoder, error) {
+	pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSystematicRLNCEncoder(pieces), nil
+}
+
+// If you want to have N-bytes piece size for each, this
+// function generates M-many pieces each of N-bytes size, which are ready
+// to be coded together with full RLNC
+func NewSystematicRLNCEncoderWithPieceSize(data []byte, pieceSize uint) (*SystematicRLNCEncoder, error) {
+	pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSystematicRLNCEncoder(pieces), nil
 }
