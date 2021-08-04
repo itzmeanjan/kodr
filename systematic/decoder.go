@@ -21,6 +21,10 @@ func (s *SystematicRLNCDecoder) IsDecoded() bool {
 	return s.useful >= s.expected
 }
 
+func (s *SystematicRLNCDecoder) Required() uint {
+	return s.expected - s.useful
+}
+
 func (s *SystematicRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 	s.pieces = append(s.pieces, piece)
 	s.received++
@@ -36,26 +40,19 @@ func (s *SystematicRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 		return kodr.ErrAllUsefulPiecesReceived
 	}
 
-	if s.received >= s.expected {
-		attemptSystematicRREF := false
+	if s.rref == nil {
 		rref := make(matrix.Matrix, s.received)
 		for i := range rref {
 			rref[i] = s.pieces[i].Flatten()
-			if s.pieces[i].IsSystematic() {
-				attemptSystematicRREF = true
-			}
-		}
-
-		if attemptSystematicRREF {
-			rref = rref.SystematicRREF(s.field, s.expected)
-		} else {
-			rref = rref.Rref(s.field)
 		}
 
 		s.rref = rref
-		s.useful = s.rref.Rank_()
+	} else {
+		s.rref = append(s.rref, piece.Flatten())
 	}
 
+	s.rref.Rref(s.field)
+	s.useful = s.rref.Rank_()
 	return nil
 }
 
