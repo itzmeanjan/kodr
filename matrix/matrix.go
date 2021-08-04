@@ -200,25 +200,58 @@ func (m *Matrix) isSystematic(idx int, pieceCount uint) bool {
 	return c_piece.IsSystematic()
 }
 
-func (m *Matrix) systematicReorder(pieceCount uint) [][]int {
+func absSub(a, b int) int {
+	c := a - b
+	if c < 0 {
+		return -c
+	}
+	return c
+}
+
+func (m *Matrix) SystematicReorder(pieceCount uint) [][]int {
 	for i := 0; i < int(m.Rows()); i++ {
 		pivot_i := m.pivot(i)
+		if m.isSystematic(i, pieceCount) {
+			// pivot row already placed in correct
+			// place, don't touch
+			if pivot_i == i {
+				continue
+			}
+		}
 
 		for j := i + 1; j < int(m.Rows()); j++ {
+			pivot_j := m.pivot(j)
 			if m.isSystematic(j, pieceCount) {
-				pivot_j := m.pivot(j)
-				if pivot_i > pivot_j || pivot_i == -1 {
-					m.swap(i, j)
-					i = 0
+				// pivot row already placed in correct
+				// place, don't touch
+				if pivot_j == j {
+					continue
 				}
 			}
+
+			// both are non-pivot rows, so just ignore
+			if pivot_i == -1 && pivot_j == -1 {
+				continue
+			}
+
+			// does swapping take row far away from where it should
+			// be placed ?
+			//
+			// if yes, then just ignore
+			if absSub(j, pivot_j) <= absSub(i, pivot_j) {
+				continue
+			}
+
+			m.swap(i, j)
+			i -= 1
+			break
 		}
 	}
 
 	pivots := make([][]int, 0, m.Rows())
 	for i := 0; i < int(m.Rows()); i++ {
 		if !m.isSystematic(i, pieceCount) {
-			break
+			continue
 		}
 		pivots = append(pivots, []int{i, m.pivot(i)})
 	}
@@ -229,7 +262,7 @@ func (m *Matrix) SystematicRREF(field *galoisfield.GF, pieceCount uint) Matrix {
 	copied := new(Matrix)
 	copied.copy(*m)
 
-	s_indices := copied.systematicReorder(pieceCount)
+	s_indices := copied.SystematicReorder(pieceCount)
 	if len(s_indices) == 0 || len(s_indices) == int(copied.Rows()) {
 		return *copied
 	}

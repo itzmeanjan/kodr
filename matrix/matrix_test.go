@@ -3,7 +3,9 @@ package matrix_test
 import (
 	"bytes"
 	"errors"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
@@ -99,4 +101,40 @@ func TestMatrixSystematicRREF(t *testing.T) {
 	rref := m.SystematicRREF(field, uint(pieceCount))
 	t.Log(expected)
 	t.Log(rref)
+}
+
+func TestSystematicReorder(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	var (
+		pieceCount uint          = 6
+		mat        matrix.Matrix = matrix.Matrix{
+			{0, 1, 0, 0, 0, 0, 2},
+			{0, 0, 1, 0, 0, 0, 3},
+			{119, 213, 236, 165, 205, 46, 125},
+			{255, 81, 246, 171, 124, 125, 78},
+			{1, 0, 0, 0, 0, 0, 1},
+			{36, 195, 116, 141, 144, 150, 148}}
+		expected [][]int = [][]int{
+			{0, 0},
+			{1, 1},
+			{2, 2}}
+	)
+
+	for i := 0; i < 1<<5; i++ {
+		rand.Shuffle(len(mat), func(i, j int) {
+			mat[i], mat[j] = mat[j], mat[i]
+		})
+
+		s_indices := mat.SystematicReorder(pieceCount)
+		if len(s_indices) != len(expected) {
+			t.Fatalf("expected %d pivot columns, found %d\n", len(expected), len(s_indices))
+		}
+
+		for j, v := range s_indices {
+			if !(v[0] == expected[j][0] && v[1] == expected[j][1]) {
+				t.Fatalf("reordered to: %v\n", mat)
+			}
+		}
+	}
 }
