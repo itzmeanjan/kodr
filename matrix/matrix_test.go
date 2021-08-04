@@ -118,7 +118,7 @@ func TestMatrixSystematicRREF(t *testing.T) {
 	}
 }
 
-func TestSystematicReorder(t *testing.T) {
+func TestMatrixSystematicReorder(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	var (
