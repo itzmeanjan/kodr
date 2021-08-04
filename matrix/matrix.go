@@ -294,18 +294,37 @@ func (m *Matrix) SystematicRREF(field *galoisfield.GF, pieceCount uint) Matrix {
 		return *copied
 	}
 
-	p_idx := s_indices[len(s_indices)-1][1]
-	s_matrix := new(Matrix)
+	head := 0
+	for _, v := range s_indices {
+		if head != v[0] {
+			break
+		}
 
-	for i := len(s_indices); i < int(copied.Rows()); i++ {
-		r := (*copied)[i][p_idx+1:]
-		*s_matrix = append(*s_matrix, r)
+		head++
 	}
 
-	s_matrix.copy(s_matrix.Rref(field))
+	_slice_matrix := (*copied)[head:]
+	_slice_row_idx := s_indices[head-1][1]
+	_rows := make([][]byte, len(_slice_matrix))
 
-	for i := len(s_indices); i < int(copied.Rows()); i++ {
-		copy((*copied)[i][p_idx+1:], (*s_matrix)[i-len(s_indices)])
+	for i := 0; i < len(_slice_matrix); i++ {
+		_row := _slice_matrix[i][_slice_row_idx+1:]
+		_rows[i] = _row
+	}
+
+	sub_matrix := Matrix(_rows)
+	_rref := sub_matrix.Rref(field)
+
+	for i := head; i < int(copied.Rows()); i++ {
+		_i := i - head
+		if _i < len(_rref) {
+			copy((*copied)[i][_slice_row_idx+1:], _rref[_i])
+			continue
+		}
+
+		(*copied)[i] = nil
+		copy((*copied)[i:], (*copied)[i+1:])
+		*copied = (*copied)[:len(*copied)-1]
 	}
 
 	return *copied

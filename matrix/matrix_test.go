@@ -81,9 +81,11 @@ func TestMatrixMultiplication(t *testing.T) {
 }
 
 func TestMatrixSystematicRREF(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
 	field := galoisfield.DefaultGF256
-	pieceCount := 6
-	m := matrix.Matrix{
+	pieceCount := uint(6)
+	mat := matrix.Matrix{
 		{1, 0, 0, 0, 0, 0, 1},
 		{0, 1, 0, 0, 0, 0, 2},
 		{0, 0, 1, 0, 0, 0, 3},
@@ -98,9 +100,22 @@ func TestMatrixSystematicRREF(t *testing.T) {
 		{0, 0, 0, 0, 1, 0, 5},
 		{0, 0, 0, 0, 0, 1, 6}}
 
-	rref := m.SystematicRREF(field, uint(pieceCount))
-	t.Log(expected)
-	t.Log(rref)
+	for i := 0; i < 1<<5; i++ {
+		rand.Shuffle(len(mat), func(i, j int) {
+			mat[i], mat[j] = mat[j], mat[i]
+		})
+
+		s_rref := mat.SystematicRREF(field, pieceCount)
+		if len(s_rref) != len(expected) {
+			t.Fatalf("expected matrix dimension (%d, _), found (%d, _)\n", len(expected), len(s_rref))
+		}
+
+		for i := 0; i < len(s_rref); i++ {
+			if !bytes.Equal(s_rref[i], expected[i]) {
+				t.Fatalf("rref-ed to: %v\n", s_rref)
+			}
+		}
+	}
 }
 
 func TestSystematicReorder(t *testing.T) {
@@ -109,12 +124,12 @@ func TestSystematicReorder(t *testing.T) {
 	var (
 		pieceCount uint          = 6
 		mat        matrix.Matrix = matrix.Matrix{
+			{1, 0, 0, 0, 0, 0, 1},
 			{0, 1, 0, 0, 0, 0, 2},
 			{0, 0, 1, 0, 0, 0, 3},
-			{119, 213, 236, 165, 205, 46, 125},
 			{255, 81, 246, 171, 124, 125, 78},
-			{1, 0, 0, 0, 0, 0, 1},
-			{36, 195, 116, 141, 144, 150, 148}}
+			{36, 195, 116, 141, 144, 150, 148},
+			{119, 213, 236, 165, 205, 46, 125}}
 		expected [][]int = [][]int{
 			{0, 0},
 			{1, 1},
