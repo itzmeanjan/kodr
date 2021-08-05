@@ -11,6 +11,29 @@ type FullRLNCEncoder struct {
 	extra  uint
 }
 
+// How many bytes of data, constructed by concatenating
+// coded pieces together, required at minimum for decoding
+// back to original pieces ?
+//
+// As I'm coding N-many pieces together, I need at least N-many
+// linearly independent pieces, which are concatenated together
+// to form a byte slice & can be used for original data reconstruction.
+//
+// So it computes N * codedPieceLen
+func (f *FullRLNCEncoder) DecodableLen() uint {
+	return uint(len(f.pieces)) * f.CodedPieceLen()
+}
+
+// If N-many original pieces are coded together
+// what could be length of one such coded piece
+// obtained by invoking `CodedPiece` ?
+//
+// Here N = len(pieces), original pieces which are
+// being coded together
+func (f *FullRLNCEncoder) CodedPieceLen() uint {
+	return uint(len(f.pieces) + len(f.pieces[0]))
+}
+
 // How many extra padding bytes added at end of
 // original data slice so that splitted pieces are
 // all of same size ?

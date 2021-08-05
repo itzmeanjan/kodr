@@ -12,6 +12,29 @@ type SystematicRLNCEncoder struct {
 	extra          uint
 }
 
+// How many bytes of data, constructed by concatenating
+// coded pieces together, required at minimum for decoding
+// back to original pieces ?
+//
+// As I'm coding N-many pieces together, I need at least N-many
+// linearly independent pieces, which are concatenated together
+// to form a byte slice & can be used for original data reconstruction.
+//
+// So it computes N * codedPieceLen
+func (s *SystematicRLNCEncoder) DecodableLen() uint {
+	return uint(len(s.pieces)) * s.CodedPieceLen()
+}
+
+// If N-many original pieces are coded together
+// what could be length of one such coded piece
+// obtained by invoking `CodedPiece` ?
+//
+// Here N = len(pieces), original pieces which are
+// being coded together
+func (s *SystematicRLNCEncoder) CodedPieceLen() uint {
+	return uint(len(s.pieces) + len(s.pieces[0]))
+}
+
 // If any extra padding bytes added at end of original
 // data slice for making all pieces of same size,
 // returned value will be >0

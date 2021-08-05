@@ -33,12 +33,17 @@ type CodedPiece struct {
 	Piece  Piece
 }
 
+// Total length of coded piece --- len(coding_vector) + len(piece)
+func (c *CodedPiece) Len() uint {
+	return uint(len(c.Vector) + len(c.Piece))
+}
+
 // Flattens coded piece into single byte
-// array ( vector ++ piece ), so that
+// slice ( vector ++ piece ), so that
 // decoding steps can be performed -- rref
 // on received data matrix
 func (c *CodedPiece) Flatten() []byte {
-	res := make([]byte, len(c.Vector)+len(c.Piece))
+	res := make([]byte, c.Len())
 	copy(res[:len(c.Vector)], c.Vector)
 	copy(res[len(c.Vector):], c.Piece)
 	return res
