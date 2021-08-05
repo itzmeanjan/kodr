@@ -186,7 +186,7 @@ func TestSystematicRLNCEncoder_Padding(t *testing.T) {
 	})
 }
 
-func TestSystematicEncoder_CodedPieceLen(t *testing.T) {
+func TestSystematicRLNCEncoder_CodedPieceLen(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	t.Run("WithPieceCount", func(t *testing.T) {
@@ -224,5 +224,59 @@ func TestSystematicEncoder_CodedPieceLen(t *testing.T) {
 				t.Fatalf("expected coded piece to be of %dB, found to be of %dB\n", enc.CodedPieceLen(), c_piece.Len())
 			}
 		}
+	})
+}
+
+func TestSystematicRLNCEncoder_DecodableLen(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	flow := func(enc *systematic.SystematicRLNCEncoder, dec *systematic.SystematicRLNCDecoder) {
+		consumed_len := uint(0)
+		for !dec.IsDecoded() {
+			c_piece := enc.CodedPiece()
+			// randomly drop piece
+			if rand.Intn(2) == 0 {
+				continue
+			}
+			if err := dec.AddPiece(c_piece); errors.Is(err, kodr.ErrAllUsefulPiecesReceived) {
+				break
+			}
+
+			// as consumed this piece --- accounting
+			consumed_len += c_piece.Len()
+		}
+
+		if consumed_len < enc.DecodableLen() {
+			t.Fatalf("expected to consume >=%dB for decoding, but actually consumed %dB\n", enc.DecodableLen(), consumed_len)
+		}
+	}
+
+	t.Run("WithPieceCount", func(t *testing.T) {
+		size := uint(2<<10 + rand.Intn(2<<10))
+		pieceCount := uint(2<<1 + rand.Intn(2<<8))
+		data := generateData(size)
+
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceCount(data, pieceCount)
+		if err != nil {
+			t.Fatalf("Error: %s\n", err.Error())
+		}
+
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
+		flow(enc, dec)
+	})
+
+	t.Run("WithPieceSize", func(t *testing.T) {
+		size := uint(2<<10 + rand.Intn(2<<10))
+		pieceSize := uint(2<<5 + rand.Intn(2<<5))
+		pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
+		data := generateData(size)
+
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(data, pieceSize)
+		if err != nil {
+			t.Fatalf("Error: %s\n", err.Error())
+		}
+
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
+		flow(enc, dec)
 	})
 }
