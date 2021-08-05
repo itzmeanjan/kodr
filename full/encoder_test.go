@@ -126,3 +126,48 @@ func TestNewFullRLNCEncoderWithPieceSize(t *testing.T) {
 
 	encoderFlow(t, enc, pieceCount, codedPieceCount, pieces)
 }
+
+func TestFullRLNCEncoderPadding(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	t.Run("WithPieceCount", func(t *testing.T) {
+		for i := 0; i < 1<<5; i++ {
+			size := uint(2<<10 + rand.Intn(2<<10))
+			pieceCount := uint(2<<1 + rand.Intn(2<<8))
+			data := generateData(size)
+
+			enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
+			if err != nil {
+				t.Fatalf("Error: %s\n", err.Error())
+			}
+
+			extra := enc.Padding()
+			pieceSize := (size + extra) / pieceCount
+			c_piece := enc.CodedPiece()
+			if uint(len(c_piece.Piece)) != pieceSize {
+				t.Fatalf("expected pieceSize to be %dB, found to be %dB\n", pieceSize, len(c_piece.Piece))
+			}
+		}
+	})
+
+	t.Run("WithPieceSize", func(t *testing.T) {
+		for i := 0; i < 1<<5; i++ {
+			size := uint(2<<10 + rand.Intn(2<<10))
+			pieceSize := uint(2<<5 + rand.Intn(2<<5))
+			pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
+			data := generateData(size)
+
+			enc, err := full.NewFullRLNCEncoderWithPieceSize(data, pieceSize)
+			if err != nil {
+				t.Fatalf("Error: %s\n", err.Error())
+			}
+
+			extra := enc.Padding()
+			c_pieceSize := (size + extra) / pieceCount
+			c_piece := enc.CodedPiece()
+			if pieceSize != c_pieceSize || uint(len(c_piece.Piece)) != pieceSize {
+				t.Fatalf("expected pieceSize to be %dB, found to be %dB\n", c_pieceSize, len(c_piece.Piece))
+			}
+		}
+	})
+}
