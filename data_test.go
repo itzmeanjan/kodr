@@ -27,15 +27,15 @@ func TestSplitDataByCount(t *testing.T) {
 	count := uint(2<<1 + rand.Intn(int(size)))
 	data := generateData(size)
 
-	if _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, 0); !(err != nil && errors.Is(err, kodr.ErrBadPieceCount)) {
+	if _, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, 0); !(err != nil && errors.Is(err, kodr.ErrBadPieceCount)) {
 		t.Fatalf("expected: %s\n", kodr.ErrBadPieceCount)
 	}
 
-	if _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, size+1); !(err != nil && errors.Is(err, kodr.ErrPieceCountMoreThanTotalBytes)) {
+	if _, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, size+1); !(err != nil && errors.Is(err, kodr.ErrPieceCountMoreThanTotalBytes)) {
 		t.Fatalf("expected: %s\n", kodr.ErrPieceCountMoreThanTotalBytes)
 	}
 
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, count)
+	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, count)
 	if err != nil {
 		t.Fatalf("didn't expect error: %s\n", err)
 	}
@@ -52,15 +52,15 @@ func TestSplitDataBySize(t *testing.T) {
 	pieceSize := uint(2<<1 + rand.Intn(int(size/2)))
 	data := generateData(size)
 
-	if _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, 0); !(err != nil && errors.Is(err, kodr.ErrZeroPieceSize)) {
+	if _, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, 0); !(err != nil && errors.Is(err, kodr.ErrZeroPieceSize)) {
 		t.Fatalf("expected: %s\n", kodr.ErrZeroPieceSize)
 	}
 
-	if _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, size); !(err != nil && errors.Is(err, kodr.ErrBadPieceCount)) {
+	if _, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, size); !(err != nil && errors.Is(err, kodr.ErrBadPieceCount)) {
 		t.Fatalf("expected: %s\n", kodr.ErrBadPieceCount)
 	}
 
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		t.Fatalf("didn't expect error: %s\n", err)
 	}

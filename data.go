@@ -87,22 +87,23 @@ func GenerateCodingVector(n uint) CodingVector {
 // In case whole data chunk can't be properly divided into pieces of requested size,
 // extra zero bytes may be appended at end, considered as padding bytes --- given that
 // each piece must be of same size
-func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, error) {
+func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, uint, error) {
 	if pieceSize == 0 {
-		return nil, ErrZeroPieceSize
+		return nil, 0, ErrZeroPieceSize
 	}
 
 	if int(pieceSize) >= len(data) {
-		return nil, ErrBadPieceCount
+		return nil, 0, ErrBadPieceCount
 	}
 
 	pieceCount := int(math.Ceil(float64(len(data)) / float64(pieceSize)))
+	padding := uint(pieceCount*int(pieceSize) - len(data))
 
 	var data_ []byte
-	if pieceCount*int(pieceSize) != len(data) {
+	if padding > 0 {
 		data_ = make([]byte, pieceCount*int(pieceSize))
 		if n := copy(data_, data); n != len(data) {
-			return nil, ErrCopyFailedDuringPieceConstruction
+			return nil, 0, ErrCopyFailedDuringPieceConstruction
 		}
 	} else {
 		data_ = data
@@ -114,34 +115,41 @@ func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, e
 		pieces[i] = piece
 	}
 
-	return pieces, nil
+	return pieces, padding, nil
 }
 
 // When you want to split whole data chunk into N-many original pieces, this function
 // will do it, while appending extra zero bytes ( read padding bytes ) at end of last piece
 // if exact division is not feasible
-func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece, error) {
+func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece, uint, error) {
 	if pieceCount < 2 {
-		return nil, ErrBadPieceCount
+		return nil, 0, ErrBadPieceCount
 	}
 
 	if int(pieceCount) > len(data) {
-		return nil, ErrPieceCountMoreThanTotalBytes
+		return nil, 0, ErrPieceCountMoreThanTotalBytes
 	}
 
 	pieceSize := uint(math.Ceil(float64(len(data)) / float64(pieceCount)))
+	padding := pieceCount*pieceSize - uint(len(data))
 
 	var data_ []byte
-	if pieceSize*pieceCount != uint(len(data)) {
+	if padding > 0 {
 		data_ = make([]byte, pieceSize*pieceCount)
 		if n := copy(data_, data); n != len(data) {
-			return nil, ErrCopyFailedDuringPieceConstruction
+			return nil, 0, ErrCopyFailedDuringPieceConstruction
 		}
 	} else {
 		data_ = data
 	}
 
-	return OriginalPiecesFromDataAndPieceSize(data_, pieceSize)
+	// padding field being ignored, because I've already computed it
+	// in line 134
+	//
+	// Here ignored field will always be 0, because it's already extended ( if required ) to be
+	// properly divisible by `pieceSize`, which is checked in function invoked below
+	splitted, _, err := OriginalPiecesFromDataAndPieceSize(data_, pieceSize)
+	return splitted, padding, err
 }
 
 // Before recoding can be performed, coded pieces byte array i.e. []<< coding vector ++ coded piece >>

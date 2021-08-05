@@ -91,7 +91,7 @@ func TestNewFullRLNCEncoderWithPieceCount(t *testing.T) {
 	data := generateData(size)
 	t.Logf("\nTotal Data: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceCount, codedPieceCount)
 
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -114,7 +114,7 @@ func TestNewFullRLNCEncoderWithPieceSize(t *testing.T) {
 	data := generateData(size)
 	t.Logf("\nTotal Data: %d bytes\nPiece Size: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceSize, pieceCount, codedPieceCount)
 
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

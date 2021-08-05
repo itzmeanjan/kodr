@@ -82,7 +82,7 @@ func TestNewSystematicRLNC(t *testing.T) {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+		pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -102,7 +102,7 @@ func TestNewSystematicRLNC(t *testing.T) {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+		pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 		if err != nil {
 			t.Fatal(err.Error())
 		}

@@ -8,6 +8,14 @@ import (
 type FullRLNCEncoder struct {
 	field  *galoisfield.GF
 	pieces []kodr.Piece
+	extra  uint
+}
+
+// How many extra padding bytes added at end of
+// original data slice so that splitted pieces are
+// all of same size ?
+func (f *FullRLNCEncoder) Padding() uint {
+	return f.extra
 }
 
 // Returns a coded piece, which is constructed on-the-fly
@@ -39,22 +47,26 @@ func NewFullRLNCEncoder(pieces []kodr.Piece) *FullRLNCEncoder {
 // bytes appended at end of last piece, if required & prepares
 // full RLNC encoder for obtaining coded pieces
 func NewFullRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*FullRLNCEncoder, error) {
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewFullRLNCEncoder(pieces), nil
+	enc := NewFullRLNCEncoder(pieces)
+	enc.extra = padding
+	return enc, nil
 }
 
 // If you want to have N-bytes piece size for each, this
 // function generates M-many pieces each of N-bytes size, which are ready
 // to be coded together with full RLNC
 func NewFullRLNCEncoderWithPieceSize(data []byte, pieceSize uint) (*FullRLNCEncoder, error) {
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewFullRLNCEncoder(pieces), nil
+	enc := NewFullRLNCEncoder(pieces)
+	enc.extra = padding
+	return enc, nil
 }

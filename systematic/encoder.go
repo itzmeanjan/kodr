@@ -9,6 +9,14 @@ type SystematicRLNCEncoder struct {
 	currentPieceId uint
 	field          *galoisfield.GF
 	pieces         []kodr.Piece
+	extra          uint
+}
+
+// If any extra padding bytes added at end of original
+// data slice for making all pieces of same size,
+// returned value will be >0
+func (s *SystematicRLNCEncoder) Padding() uint {
+	return s.extra
 }
 
 // Generates a systematic coded piece's coding vector, which has
@@ -76,22 +84,26 @@ func NewSystematicRLNCEncoder(pieces []kodr.Piece) *SystematicRLNCEncoder {
 // bytes appended at end of last piece, if required & prepares
 // full RLNC encoder for obtaining coded pieces
 func NewSystematicRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*SystematicRLNCEncoder, error) {
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSystematicRLNCEncoder(pieces), nil
+	enc := NewSystematicRLNCEncoder(pieces)
+	enc.extra = padding
+	return enc, nil
 }
 
 // If you want to have N-bytes piece size for each, this
 // function generates M-many pieces each of N-bytes size, which are ready
 // to be coded together with full RLNC
 func NewSystematicRLNCEncoderWithPieceSize(data []byte, pieceSize uint) (*SystematicRLNCEncoder, error) {
-	pieces, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSystematicRLNCEncoder(pieces), nil
+	enc := NewSystematicRLNCEncoder(pieces)
+	enc.extra = padding
+	return enc, nil
 }
