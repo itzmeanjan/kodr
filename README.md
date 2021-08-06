@@ -68,6 +68,8 @@ Examples demonstrating how to use API exposed by **kodr** for _( currently )_ su
 
 > In each walk through, code snippets are prepended with line numbers, denoting actual line numbers in respective file.
 
+---
+
 ### Full RLNC
 
 **Example:** `example/full/main.go`
@@ -154,6 +156,96 @@ go run main.go
 ```
 
 This should generate `example/full/recovered.png`, which is exactly same as `img/logo.png`.
+
+---
+
+### Systematic RLNC
+
+**Example: `example/systematic/main.go`**
+
+I start by seeding random number generator with device's nanosecond precision time
+
+```go
+46| rand.Seed(time.Now().UnixNano())
+```
+
+I define one structure for storing randomly generated values, which I serialise to JSON.
+
+```go
+17| type Data struct {
+.	FieldA uint    `json:"fieldA"`
+.	FieldB float64 `json:"fieldB"`
+.	FieldC bool    `json:"fieldC"`
+.	FieldD []byte  `json:"fieldD"`
+22| }
+```
+
+For filling up this structure, I invoke random data generator
+
+```go
+48| data := randData()
+```
+
+I calculate SHA512 hash of JSON serialised data, which turns out to be `0x25c37651f7a567963a884ef04d7dc6df0901ab58ca28aa3eaf31097e5d9155d4` in this run.
+
+```go
+56| hasher := sha512.New512_256()
+
+.
+.
+
+59| log.Printf("SHA512(original): 0x%s\n", hex.EncodeToString(sum))
+```
+
+I decide to split serialised data into N-many pieces, each of length 8 bytes.
+
+```go
+61| var (
+62|		pieceSize uint = 1 << 3 // in bytes
+63| )
+
+65| enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(m_data, pieceSize)
+66| if err != nil { /* exit */ }
+```
+
+So I've generated 2474 bytes of JSON serialised data, which after splitting into equal sized byte slices ( read original pieces ), I get 310 pieces --- pieces which are to be coded together. It requires me to append 6 empty bytes --- `8 x 310 - 6 = 2480 - 6 = 2474 bytes`
+
+Systematic encoder also informs me, I need to consume 98580 bytes of coded data to construct original pieces i.e. original JSON serialised data.
+
+I simulate some pieces collected, while some are dropped
+
+```go
+75| dec := systematic.NewSystematicRLNCDecoder(enc.PieceCount())
+76| for {
+	c_piece := enc.CodedPiece()
+
+	// simulating piece drop/ loss
+	if rand.Intn(2) == 0 {
+		continue
+	}
+
+	err := dec.AddPiece(c_piece)
+    ...
+88| }
+```
+
+> Note: As these pieces are coded using systematic encoder, first N-many pieces ( here N = 310 ), are kept uncoded though they're augmented to be coded by providing with coding vector which has only one non-zero element. Next coded pieces i.e. >310th carry randomly generated coding vectors as usual.
+
+I'm able to recover 2480 bytes of serialised data, but notice, padding is counted. So I strip out last 6 padding bytes, which results into 2474 bytes of serialised data. Computing SHA512 on recovered data must produce same hash as found with original data.
+
+And it's indeed same hash `0x25c37651f7a567963a884ef04d7dc6df0901ab58ca28aa3eaf31097e5d9155d4` --- asserting reconstructed data is same as original data, when padding bytes stripped out.
+
+![example](./img/systematic_rlnc_example.png)
+
+For running this example
+
+```bash
+pushd example/systematic
+go run main.go
+popd
+```
+
+> Note: Your console log is probably going to be different than mine.
 
 ---
 
