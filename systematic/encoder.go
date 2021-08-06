@@ -12,6 +12,21 @@ type SystematicRLNCEncoder struct {
 	extra          uint
 }
 
+// Total #-of pieces being coded together --- denoting
+// these many linearly independent pieces are required
+// successfully decoding back to original pieces
+func (s *SystematicRLNCEncoder) PieceCount() uint {
+	return uint(len(s.pieces))
+}
+
+// Pieces which are coded together are all of same size
+//
+// Total data being coded = pieceSize * pieceCount ( may include
+// some padding bytes )
+func (s *SystematicRLNCEncoder) PieceSize() uint {
+	return uint(len(s.pieces[0]))
+}
+
 // How many bytes of data, constructed by concatenating
 // coded pieces together, required at minimum for decoding
 // back to original pieces ?
@@ -22,7 +37,7 @@ type SystematicRLNCEncoder struct {
 //
 // So it computes N * codedPieceLen
 func (s *SystematicRLNCEncoder) DecodableLen() uint {
-	return uint(len(s.pieces)) * s.CodedPieceLen()
+	return s.PieceCount() * s.CodedPieceLen()
 }
 
 // If N-many original pieces are coded together
@@ -32,7 +47,7 @@ func (s *SystematicRLNCEncoder) DecodableLen() uint {
 // Here N = len(pieces), original pieces which are
 // being coded together
 func (s *SystematicRLNCEncoder) CodedPieceLen() uint {
-	return uint(len(s.pieces) + len(s.pieces[0]))
+	return s.PieceCount() + s.PieceSize()
 }
 
 // If any extra padding bytes added at end of original
@@ -44,12 +59,12 @@ func (s *SystematicRLNCEncoder) Padding() uint {
 
 // Generates a systematic coded piece's coding vector, which has
 // only one non-zero element ( 1 )
-func (s *SystematicRLNCEncoder) systematicCodingVector(idx uint, pieceCount uint) kodr.CodingVector {
-	if !(idx < pieceCount) {
+func (s *SystematicRLNCEncoder) systematicCodingVector(idx uint) kodr.CodingVector {
+	if !(idx < s.PieceCount()) {
 		return nil
 	}
 
-	vector := make(kodr.CodingVector, pieceCount)
+	vector := make(kodr.CodingVector, s.PieceCount())
 	vector[idx] = 1
 	return vector
 }
@@ -67,13 +82,12 @@ func (s *SystematicRLNCEncoder) systematicCodingVector(idx uint, pieceCount uint
 // Later pieces are coded as they're done in Full RLNC scheme
 // `i` keeps incrementing by +1, until it reaches N
 func (s *SystematicRLNCEncoder) CodedPiece() *kodr.CodedPiece {
-	pieceCount := uint(len(s.pieces))
-	if s.currentPieceId < pieceCount {
+	if s.currentPieceId < s.PieceCount() {
 		// `nil` coding vector can be returned, which is
 		// not being checked at all, as in that case we'll
 		// never get into `if` branch
-		vector := s.systematicCodingVector(s.currentPieceId, pieceCount)
-		piece := make(kodr.Piece, len(s.pieces[s.currentPieceId]))
+		vector := s.systematicCodingVector(s.currentPieceId)
+		piece := make(kodr.Piece, s.PieceSize())
 		copy(piece, s.pieces[s.currentPieceId])
 
 		s.currentPieceId++
@@ -83,8 +97,8 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr.CodedPiece {
 		}
 	}
 
-	vector := kodr.GenerateCodingVector(pieceCount)
-	piece := make(kodr.Piece, len(s.pieces[0]))
+	vector := kodr.GenerateCodingVector(s.PieceCount())
+	piece := make(kodr.Piece, s.PieceSize())
 	for i := range s.pieces {
 		piece.Multiply(s.pieces[i], vector[i], s.field)
 	}
