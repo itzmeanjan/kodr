@@ -32,7 +32,12 @@ go test -v -cover ./...
 
 ## Benchmarking
 
-I write required testcases for benchmarking performance of encoder, recoder & decoder of all RLNC schemes, while I also present results after running those on consumer grade machine with configuration `Intel(R) Core(TM) i3-5005U CPU @ 2.00GHz`.
+I write required testcases for benchmarking performance of {en, re, de}coder of implemented RLNC schemes, while I also present results after running those on consumer grade machines with configuration
+
+- `Intel(R) Core(TM) i3-5005U CPU @ 2.00GHz`
+- `Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz`
+
+---
 
 ### Full RLNC
 
@@ -61,6 +66,32 @@ And **decoder** performance denotes each round of full data reconstruction from 
 > Note: It can be clearly understood that decoding complexity keeps increasing very fast, when using full RLNC with large data chunks. For decoding 2MB total chunk which is splitted into 256 pieces of equal sized byte slice, it takes ~6s.
 
 ![benchmark_full_decoder](./img/benchmark_full_decoder.png)
+
+---
+
+### Systematic RLNC
+
+Running benchmark tests on better hardware shows encoder performance improvement to quite a large extent
+
+> Average encoding speed **~660MB/s**
+
+```bash
+go test -run=xxx -bench=Encoder ./bench/systematic
+```
+
+![benchmark_systematic_encoder](img/benchmark_systematic_encoder.png)
+
+Systematic RLNC decoder has an advantage over full RLNC decoder because it may get some pieces which are actually uncoded, just augmented to be coded, so it doesn't need to process those pieces, rather it'll use uncoded pieces to decode other coded pieces faster.
+
+```bash
+go test -run=xxx -bench=Decoder ./bench/systematic
+```
+
+> For decoding 1MB whole chunk, which is splitted into 512 pieces & coded, it takes quite long time --- growth rate of decoding time is pretty high as piece count keeps increasing. It's better not to increase piece count very much, rather piece size can increase, so that we pay relatively lower decoding cost.
+
+> Notice how whole chunk size increases to 2MB, but with small piece count decoding time stays afforable.
+
+![benchmark_systematic_decoder](img/benchmark_systematic_decoder.png)
 
 ## Usage
 
