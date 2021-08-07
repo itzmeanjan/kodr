@@ -19,6 +19,15 @@ func BenchmarkFullRLNCDecoder(t *testing.B) {
 		b.Run("256Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<20) })
 		b.Run("512Pieces", func(b *testing.B) { decode(b, 1<<9, 1<<20) })
 	})
+
+	t.Run("2M", func(b *testing.B) {
+		b.Run("16Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<21) })
+		b.Run("32Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<21) })
+		b.Run("64Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<21) })
+		b.Run("128Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<21) })
+		b.Run("256Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<21) })
+		b.Run("512Pieces", func(b *testing.B) { decode(b, 1<<9, 1<<21) })
+	})
 }
 
 func decode(t *testing.B, pieceCount uint, total uint) {
