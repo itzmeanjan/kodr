@@ -9,11 +9,15 @@ import (
 	"github.com/itzmeanjan/kodr/matrix"
 )
 
-func random_matrix(rows, cols int) [][]byte {
+// Note: If fill_with_zero is set, it's not really a random matrix
+func random_matrix(rows, cols int, fill_with_zero bool) [][]byte {
 	mat := make([][]byte, 0, rows)
 	for i := 0; i < rows; i++ {
 		row := make([]byte, cols)
-		rand.Read(row)
+		// already filled with zero
+		if !fill_with_zero {
+			rand.Read(row)
+		}
 		mat = append(mat, row)
 	}
 	return mat
@@ -37,11 +41,13 @@ func BenchmarkMatrixRref(b *testing.B) {
 
 func rref(b *testing.B, dim int, gf *galoisfield.GF) {
 	b.ResetTimer()
-	b.SetBytes(int64(dim * dim))
+	b.SetBytes(int64(dim*dim) << 1)
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		m := matrix.Matrix(random_matrix(dim, dim))
-		m.Rref(gf)
+		coeffs := random_matrix(dim, dim, false)
+		coded := random_matrix(dim, dim, true)
+		d_state := matrix.NewDecoderState(gf, coeffs, coded)
+		d_state.Rref()
 	}
 }
