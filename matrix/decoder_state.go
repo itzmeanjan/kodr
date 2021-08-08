@@ -41,9 +41,18 @@ func (d *DecoderState) clean_forward() {
 				continue
 			}
 
-			tmp := d.coeffs[i]
-			d.coeffs[i] = d.coeffs[pivot]
-			d.coeffs[pivot] = tmp
+			// row switching in coefficient matrix
+			{
+				tmp := d.coeffs[i]
+				d.coeffs[i] = d.coeffs[pivot]
+				d.coeffs[pivot] = tmp
+			}
+			// row switching in coded piece matrix
+			{
+				tmp := d.coded[i]
+				d.coded[i] = d.coded[pivot]
+				d.coded[pivot] = tmp
+			}
 		}
 
 		for j := i + 1; j < rows; j++ {
@@ -56,7 +65,7 @@ func (d *DecoderState) clean_forward() {
 				d.coeffs[j][k] = d.field.Add(d.coeffs[j][k], d.field.Mul(d.coeffs[i][k], quotient))
 			}
 
-			for k := 0; k < int(d.coded.Cols()); k++ {
+			for k := 0; k < len(d.coded[0]); k++ {
 				d.coded[j][k] = d.field.Add(d.coded[j][k], d.field.Mul(d.coded[i][k], quotient))
 			}
 		}
@@ -85,7 +94,7 @@ func (d *DecoderState) clean_backward() {
 				d.coeffs[j][k] = d.field.Add(d.coeffs[j][k], d.field.Mul(d.coeffs[i][k], quotient))
 			}
 
-			for k := 0; k < int(d.coded.Cols()); k++ {
+			for k := 0; k < len(d.coded[0]); k++ {
 				d.coded[j][k] = d.field.Add(d.coded[j][k], d.field.Mul(d.coded[i][k], quotient))
 			}
 
@@ -105,7 +114,7 @@ func (d *DecoderState) clean_backward() {
 			d.coeffs[i][j] = d.field.Mul(d.coeffs[i][j], inv)
 		}
 
-		for j := 0; j < int(d.coded.Cols()); j++ {
+		for j := 0; j < len(d.coded[0]); j++ {
 			d.coded[i][j] = d.field.Mul(d.coded[i][j], inv)
 		}
 	}
@@ -182,7 +191,7 @@ func (d *DecoderState) CodedPieceMatrix() Matrix {
 // i.e. read pieces
 func (d *DecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
 	d.coeffs = append(d.coeffs, codedPiece.Vector)
-	d.coded = append(d.coeffs, codedPiece.Piece)
+	d.coded = append(d.coded, codedPiece.Piece)
 }
 
 // Request decoded piece by index ( 0 based, definitely )
