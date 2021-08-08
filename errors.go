@@ -12,4 +12,6 @@ var (
 	ErrBadPieceCount                     = errors.New("minimum 2 pieces required for RLNC")
 	ErrCodedDataLengthMismatch           = errors.New("coded data length != coded piece count x coded piece length")
 	ErrCodingVectorLengthMismatch        = errors.New("coding vector length > coded piece length ( in total )")
+	ErrPieceNotDecodedYet                = errors.New("piece not decoded yet, more pieces required")
+	ErrPieceOutOfBound                   = errors.New("requested piece index >= pieceCount ( pieces coded together )")
 )
