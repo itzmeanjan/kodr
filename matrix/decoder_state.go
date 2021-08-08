@@ -2,12 +2,14 @@ package matrix
 
 import (
 	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr"
 )
 
 type DecoderState struct {
-	field  *galoisfield.GF
-	coeffs Matrix
-	coded  Matrix
+	field      *galoisfield.GF
+	pieceCount uint
+	coeffs     Matrix
+	coded      Matrix
 }
 
 func min(a, b int) int {
@@ -164,14 +166,84 @@ func (d *DecoderState) Rank() uint {
 	return d.coeffs.Rows()
 }
 
+// Current state of coding coefficient matrix
 func (d *DecoderState) CoefficientMatrix() Matrix {
 	return d.coeffs
 }
 
+// Current state of coded piece matrix, which is updated
+// along side coding coefficient matrix ( during rref )
 func (d *DecoderState) CodedPieceMatrix() Matrix {
 	return d.coded
 }
 
-func NewDecoderState(gf *galoisfield.GF, coeffs, coded [][]byte) *DecoderState {
-	return &DecoderState{field: gf, coeffs: coeffs, coded: coded}
+// Adds a new coded piece to decoder state, which will hopefully
+// help in decoding pieces, if linearly independent with other rows
+// i.e. read pieces
+func (d *DecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
+	d.coeffs = append(d.coeffs, codedPiece.Vector)
+	d.coded = append(d.coeffs, codedPiece.Piece)
+}
+
+// Request decoded piece by index ( 0 based, definitely )
+//
+// If piece not yet decoded/ requested index is >= #-of
+// pieces coded together, returns error message indicating so
+//
+// Otherwise piece is returned, without any error
+//
+// Note: This method will copy decoded piece into newly allocated memory
+// when whole decoding hasn't yet happened, to prevent any chance
+// that user mistakenly modifies slice returned ( read piece )
+// & that affects next round of decoding ( when new piece is received )
+func (d *DecoderState) GetPiece(idx uint) (kodr.Piece, error) {
+	if idx >= d.pieceCount {
+		return nil, kodr.ErrPieceOutOfBound
+	}
+	if idx >= d.coeffs.Rows() {
+		return nil, kodr.ErrPieceNotDecodedYet
+	}
+
+	if d.Rank() >= d.pieceCount {
+		return d.coded[idx], nil
+	}
+
+	cols := int(d.coeffs.Cols())
+	decoded := true
+
+OUT:
+	for i := 0; i < cols; i++ {
+		switch i {
+		case int(idx):
+			if d.coeffs[idx][i] != 1 {
+				decoded = false
+				break OUT
+			}
+
+		default:
+			if d.coeffs[idx][i] == 0 {
+				decoded = false
+				break OUT
+			}
+
+		}
+	}
+
+	if !decoded {
+		return nil, kodr.ErrPieceNotDecodedYet
+	}
+
+	buf := make([]byte, d.coded.Cols())
+	copy(buf, d.coded[idx])
+	return buf, nil
+}
+
+func NewDecoderStateWithPieceCount(gf *galoisfield.GF, pieceCount uint) *DecoderState {
+	coeffs := make([][]byte, 0, pieceCount)
+	coded := make([][]byte, 0, pieceCount)
+	return &DecoderState{field: gf, pieceCount: pieceCount, coeffs: coeffs, coded: coded}
+}
+
+func NewDecoderState(gf *galoisfield.GF, coeffs, coded Matrix) *DecoderState {
+	return &DecoderState{field: gf, pieceCount: uint(len(coeffs)), coeffs: coeffs, coded: coded}
 }
