@@ -82,9 +82,10 @@ func (s *SystematicRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 
 	pieces := make([]kodr.Piece, 0, s.useful)
 	for i := 0; i < int(s.useful); i++ {
-		// safe to ignore error, because I've
-		// already checked it above
-		piece, _ := s.GetPiece(uint(i))
+		piece, err := s.GetPiece(uint(i))
+		if err != nil {
+			return nil, err
+		}
 		pieces = append(pieces, piece)
 	}
 	return pieces, nil

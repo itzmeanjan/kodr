@@ -87,9 +87,12 @@ func (d *FullRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 
 	pieces := make([]kodr.Piece, 0, d.useful)
 	for i := 0; i < int(d.useful); i++ {
-		// safe to ignore error, because I've
-		// already checked it above
-		piece, _ := d.GetPiece(uint(i))
+		// error mustn't happen at this point, it should
+		// have been returned fromvery first `if-block` in function
+		piece, err := d.GetPiece(uint(i))
+		if err != nil {
+			return nil, err
+		}
 		pieces = append(pieces, piece)
 	}
 	return pieces, nil
