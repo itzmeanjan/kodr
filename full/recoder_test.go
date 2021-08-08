@@ -11,30 +11,15 @@ import (
 	"github.com/itzmeanjan/kodr/full"
 )
 
-func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, codedPieceCount, pieceCount int, pieces []kodr.Piece) {
-	recoded := make([]*kodr.CodedPiece, 0, codedPieceCount)
-	for i := 0; i < codedPieceCount; i++ {
-		rec_p, err := rec.CodedPiece()
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		recoded = append(recoded, rec_p)
-	}
-
+func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, pieceCount int, pieces []kodr.Piece) {
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < pieceCount; i++ {
-		if _, err := dec.GetPieces(); !(err != nil && errors.Is(err, kodr.ErrMoreUsefulPiecesRequired)) {
-			t.Fatal("expected error indicating more pieces are required for decoding")
+	for {
+		r_piece, err := rec.CodedPiece()
+		if err != nil {
+			t.Fatalf("Error: %s\n", err.Error())
 		}
-
-		if err := dec.AddPiece(recoded[i]); err != nil {
-			t.Fatal(err.Error())
-		}
-	}
-
-	for i := 0; i < codedPieceCount-pieceCount; i++ {
-		if err := dec.AddPiece(recoded[pieceCount+i]); !(err != nil && errors.Is(err, kodr.ErrAllUsefulPiecesReceived)) {
-			t.Fatal("expected error indication, received nothing !")
+		if err := dec.AddPiece(r_piece); errors.Is(err, kodr.ErrAllUsefulPiecesReceived) {
+			break
 		}
 	}
 
@@ -69,7 +54,7 @@ func TestNewFullRLNCRecoder(t *testing.T) {
 	}
 
 	rec := full.NewFullRLNCRecoder(coded)
-	recoderFlow(t, rec, codedPieceCount, pieceCount, pieces)
+	recoderFlow(t, rec, pieceCount, pieces)
 }
 
 func TestNewFullRLNCRecoderWithFlattenData(t *testing.T) {
@@ -96,5 +81,5 @@ func TestNewFullRLNCRecoderWithFlattenData(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	recoderFlow(t, rec, codedPieceCount, pieceCount, pieces)
+	recoderFlow(t, rec, pieceCount, pieces)
 }
