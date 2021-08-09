@@ -7,14 +7,6 @@ import (
 
 type Matrix [][]byte
 
-func (m *Matrix) copy(from Matrix) {
-	*m = make([][]byte, from.Rows())
-	for i := range *m {
-		(*m)[i] = make([]byte, from.Cols())
-		copy((*m)[i], from[i])
-	}
-}
-
 func (m *Matrix) Cmp(m_ Matrix) bool {
 	if m.Rows() != m_.Rows() || m.Cols() != m_.Cols() {
 		return false
@@ -88,7 +80,8 @@ func (m *Matrix) reorder() {
 			pivot_j := m.pivot(j)
 			if pivot_i > pivot_j || pivot_i == -1 {
 				m.swap(i, j)
-				i = 0
+				i -= 1
+				break
 			}
 		}
 	}
@@ -118,30 +111,31 @@ func (m *Matrix) clean() {
 // Rref - Get matrix into reduced row echelon form, where
 // matrix elements are GF(2**8) element, which are good fit
 // for representing in 1 byte
-func (m *Matrix) Rref(field *galoisfield.GF) Matrix {
-	copied := new(Matrix)
-	copied.copy(*m)
+func (m *Matrix) Rref(field *galoisfield.GF) {
+	// no need to rref on single row matrix
+	if m.Rows() < 2 {
+		return
+	}
 
-	for i := range *copied {
-		row := copied.invert(i, field)
-		copy((*copied)[i], row)
-		idx := copied.pivot(i)
+	for i := range *m {
+		row := m.invert(i, field)
+		copy((*m)[i], row)
+		idx := m.pivot(i)
 		if idx == -1 {
 			continue
 		}
 
-		for j := range *copied {
-			if i == j || (*copied)[j][idx] == 0 {
+		for j := range *m {
+			if i == j || (*m)[j][idx] == 0 {
 				continue
 			}
 
-			copy((*copied)[j], add(copied.scale(i, (*copied)[j][idx], field), (*copied)[j], field))
+			copy((*m)[j], add(m.scale(i, (*m)[j][idx], field), (*m)[j], field))
 		}
 	}
 
-	copied.clean()
-	copied.reorder()
-	return *copied
+	m.clean()
+	m.reorder()
 }
 
 // Rank_ - Expected to be invoked on row reduced matrix
@@ -165,8 +159,8 @@ func (m *Matrix) Rank_() uint {
 // Rank - Make use of this method when you've a
 // matrix which is not yet rref-ed
 func (m *Matrix) Rank(field *galoisfield.GF) uint {
-	rref := m.Rref(field)
-	return rref.Rank_()
+	m.Rref(field)
+	return m.Rank_()
 }
 
 // Multiply - Multiplies two matrices ( which can be multiplied )

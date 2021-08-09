@@ -1,4 +1,4 @@
-package full_test
+package systematic_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/itzmeanjan/kodr"
-	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/systematic"
 )
 
 // Generates `N`-bytes of random data from default
@@ -31,26 +31,97 @@ func generatePieces(pieceCount uint, pieceLength uint) []kodr.Piece {
 	return pieces
 }
 
-func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPieceCount int, pieces []kodr.Piece) {
-	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
-	for i := 0; i < codedPieceCount; i++ {
-		coded = append(coded, enc.CodedPiece())
-	}
+func TestSystematicRLNCCoding(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
 
-	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < pieceCount; i++ {
-		if _, err := dec.GetPieces(); !(err != nil && errors.Is(err, kodr.ErrMoreUsefulPiecesRequired)) {
-			t.Fatal("expected error indicating more pieces are required for decoding")
+	var (
+		pieceCount      uint                              = uint(2<<1 + rand.Intn(2<<8))
+		pieceLength     uint                              = 8192
+		codedPieceCount uint                              = pieceCount * 2
+		pieces          []kodr.Piece                      = generatePieces(pieceCount, pieceLength)
+		enc             *systematic.SystematicRLNCEncoder = systematic.NewSystematicRLNCEncoder(pieces)
+	)
+
+	for i := 0; i < int(codedPieceCount); i++ {
+		c_piece := enc.CodedPiece()
+		if i < int(pieceCount) {
+			if !c_piece.IsSystematic() {
+				t.Fatal("expected piece to be systematic coded")
+			}
+		} else {
+			if c_piece.IsSystematic() {
+				t.Fatal("expected piece to be random coded")
+			}
+		}
+	}
+}
+
+func TestNewSystematicRLNC(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
+	t.Run("Encoder", func(t *testing.T) {
+		var (
+			pieceCount  uint = 1 << 8
+			pieceLength uint = 8192
+		)
+
+		pieces := generatePieces(pieceCount, pieceLength)
+		enc := systematic.NewSystematicRLNCEncoder(pieces)
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
+
+		encoderFlow(t, enc, dec, pieceCount, pieces)
+	})
+
+	t.Run("EncoderWithPieceCount", func(t *testing.T) {
+		size := uint(2<<10 + rand.Intn(2<<10))
+		pieceCount := uint(2<<1 + rand.Intn(2<<8))
+		data := generateData(size)
+
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceCount(data, pieceCount)
+		if err != nil {
+			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		if err := dec.AddPiece(coded[i]); err != nil {
+		pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+		if err != nil {
 			t.Fatal(err.Error())
 		}
-	}
 
-	for i := 0; i < codedPieceCount-pieceCount; i++ {
-		if err := dec.AddPiece(coded[pieceCount+i]); !(err != nil && errors.Is(err, kodr.ErrAllUsefulPiecesReceived)) {
-			t.Fatal("expected error indication, received nothing !")
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
+		encoderFlow(t, enc, dec, pieceCount, pieces)
+	})
+
+	t.Run("EncoderWithPieceSize", func(t *testing.T) {
+		size := uint(2<<10 + rand.Intn(2<<10))
+		pieceSize := uint(2<<5 + rand.Intn(2<<5))
+		pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
+		data := generateData(size)
+
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(data, pieceSize)
+		if err != nil {
+			t.Fatalf("Error: %s\n", err.Error())
+		}
+
+		pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
+		encoderFlow(t, enc, dec, pieceCount, pieces)
+	})
+}
+
+func encoderFlow(t *testing.T, enc *systematic.SystematicRLNCEncoder, dec *systematic.SystematicRLNCDecoder, pieceCount uint, pieces []kodr.Piece) {
+	for {
+		c_piece := enc.CodedPiece()
+
+		if rand.Intn(2) == 0 {
+			continue
+		}
+
+		if err := dec.AddPiece(c_piece); err != nil && errors.Is(err, kodr.ErrAllUsefulPiecesReceived) {
+			break
 		}
 	}
 
@@ -63,71 +134,14 @@ func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPiece
 		t.Fatal("didn't decode all !")
 	}
 
-	for i := 0; i < pieceCount; i++ {
+	for i := 0; i < int(pieceCount); i++ {
 		if !bytes.Equal(pieces[i], d_pieces[i]) {
 			t.Fatal("decoded data doesn't match !")
 		}
 	}
 }
 
-func TestNewFullRLNCEncoder(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
-	pieceCount := 128
-	pieceLength := 8192
-	codedPieceCount := pieceCount + 2
-	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
-	enc := full.NewFullRLNCEncoder(pieces)
-
-	encoderFlow(t, enc, pieceCount, codedPieceCount, pieces)
-}
-
-func TestNewFullRLNCEncoderWithPieceCount(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
-	size := uint(2<<10 + rand.Intn(2<<10))
-	pieceCount := uint(2<<1 + rand.Intn(2<<8))
-	codedPieceCount := pieceCount + 2
-	data := generateData(size)
-	t.Logf("\nTotal Data: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceCount, codedPieceCount)
-
-	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	encoderFlow(t, enc, int(pieceCount), int(codedPieceCount), pieces)
-}
-
-func TestNewFullRLNCEncoderWithPieceSize(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
-	size := uint(2<<10 + rand.Intn(2<<10))
-	pieceSize := uint(2<<5 + rand.Intn(2<<5))
-	pieceCount := int(math.Ceil(float64(size) / float64(pieceSize)))
-	codedPieceCount := pieceCount + 2
-	data := generateData(size)
-	t.Logf("\nTotal Data: %d bytes\nPiece Size: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceSize, pieceCount, codedPieceCount)
-
-	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	enc, err := full.NewFullRLNCEncoderWithPieceSize(data, pieceSize)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	encoderFlow(t, enc, pieceCount, codedPieceCount, pieces)
-}
-
-func TestFullRLNCEncoderPadding(t *testing.T) {
+func TestSystematicRLNCEncoder_Padding(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	t.Run("WithPieceCount", func(t *testing.T) {
@@ -136,7 +150,7 @@ func TestFullRLNCEncoderPadding(t *testing.T) {
 			pieceCount := uint(2<<1 + rand.Intn(2<<8))
 			data := generateData(size)
 
-			enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
+			enc, err := systematic.NewSystematicRLNCEncoderWithPieceCount(data, pieceCount)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err.Error())
 			}
@@ -157,7 +171,7 @@ func TestFullRLNCEncoderPadding(t *testing.T) {
 			pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
 			data := generateData(size)
 
-			enc, err := full.NewFullRLNCEncoderWithPieceSize(data, pieceSize)
+			enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(data, pieceSize)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err.Error())
 			}
@@ -172,7 +186,7 @@ func TestFullRLNCEncoderPadding(t *testing.T) {
 	})
 }
 
-func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
+func TestSystematicRLNCEncoder_CodedPieceLen(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	t.Run("WithPieceCount", func(t *testing.T) {
@@ -180,7 +194,7 @@ func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
 		pieceCount := uint(2<<1 + rand.Intn(2<<8))
 		data := generateData(size)
 
-		enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceCount(data, pieceCount)
 		if err != nil {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
@@ -199,7 +213,7 @@ func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
 		pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
 		data := generateData(size)
 
-		enc, err := full.NewFullRLNCEncoderWithPieceSize(data, pieceSize)
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(data, pieceSize)
 		if err != nil {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
@@ -213,10 +227,10 @@ func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
 	})
 }
 
-func TestFullRLNCEncoder_DecodableLen(t *testing.T) {
+func TestSystematicRLNCEncoder_DecodableLen(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
-	flow := func(enc *full.FullRLNCEncoder, dec *full.FullRLNCDecoder) {
+	flow := func(enc *systematic.SystematicRLNCEncoder, dec *systematic.SystematicRLNCDecoder) {
 		consumed_len := uint(0)
 		for !dec.IsDecoded() {
 			c_piece := enc.CodedPiece()
@@ -242,12 +256,12 @@ func TestFullRLNCEncoder_DecodableLen(t *testing.T) {
 		pieceCount := uint(2<<1 + rand.Intn(2<<8))
 		data := generateData(size)
 
-		enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceCount(data, pieceCount)
 		if err != nil {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		dec := full.NewFullRLNCDecoder(pieceCount)
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
 		flow(enc, dec)
 	})
 
@@ -257,12 +271,12 @@ func TestFullRLNCEncoder_DecodableLen(t *testing.T) {
 		pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
 		data := generateData(size)
 
-		enc, err := full.NewFullRLNCEncoderWithPieceSize(data, pieceSize)
+		enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(data, pieceSize)
 		if err != nil {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		dec := full.NewFullRLNCDecoder(pieceCount)
+		dec := systematic.NewSystematicRLNCDecoder(pieceCount)
 		flow(enc, dec)
 	})
 }

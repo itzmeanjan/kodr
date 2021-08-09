@@ -66,7 +66,7 @@ func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 		d.rref = append(d.rref, piece.Flatten())
 	}
 
-	d.rref = d.rref.Rref(d.field)
+	d.rref.Rref(d.field)
 	d.useful = d.rref.Rank_()
 	return nil
 }

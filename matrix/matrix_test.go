@@ -15,22 +15,22 @@ func TestMatrixRref(t *testing.T) {
 
 	m_1 := matrix.Matrix{{70, 137, 2, 152}, {223, 92, 234, 98}, {217, 141, 33, 44}, {145, 135, 71, 45}}
 	m_1_rref := matrix.Matrix{{1, 0, 0, 105}, {0, 1, 0, 181}, {0, 0, 1, 42}}
-	rref := m_1.Rref(field)
-	if !rref.Cmp(m_1_rref) {
+	m_1.Rref(field)
+	if !m_1.Cmp(m_1_rref) {
 		t.Fatal("rref doesn't match !")
 	}
 
 	m_2 := matrix.Matrix{{68, 54, 6, 230}, {16, 56, 215, 78}, {159, 186, 146, 163}, {122, 41, 205, 133}}
 	m_2_rref := matrix.Matrix{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}
-	rref = m_2.Rref(field)
-	if !rref.Cmp(m_2_rref) {
+	m_2.Rref(field)
+	if !m_2.Cmp(m_2_rref) {
 		t.Fatal("rref doesn't match !")
 	}
 
 	m_3 := matrix.Matrix{{100, 31, 76, 199, 119}, {207, 34, 207, 208, 18}, {62, 20, 54, 6, 187}, {66, 8, 52, 73, 54}, {122, 138, 247, 211, 165}}
 	m_3_rref := matrix.Matrix{{1, 0, 0, 0, 0}, {0, 1, 0, 0, 0}, {0, 0, 1, 0, 0}, {0, 0, 0, 1, 0}, {0, 0, 0, 0, 1}}
-	rref = m_3.Rref(field)
-	if !rref.Cmp(m_3_rref) {
+	m_3.Rref(field)
+	if !m_3.Cmp(m_3_rref) {
 		t.Fatal("rref doesn't match !")
 	}
 }
