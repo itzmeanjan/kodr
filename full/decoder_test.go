@@ -27,7 +27,7 @@ func TestNewFullRLNCDecoder(t *testing.T) {
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
 	neededPieceCount := uint(pieceCount)
-	for i := 0; i < pieceCount; i++ {
+	for i := 0; i < codedPieceCount; i++ {
 
 		// test whether required piece count is monotonically decreasing or not
 		switch i {
@@ -45,18 +45,13 @@ func TestNewFullRLNCDecoder(t *testing.T) {
 			}
 		}
 
-		// check is piece is already decoded or not --- which it should never be
-		// because we're iterating over `pieceCount` #-of pieces & those many
-		// we must need for decoding
-		//
-		// next piece to be added in follow code block
-		if dec.IsDecoded() {
-			t.Fatal("didn't expect it to be decoded already")
+		if err := dec.AddPiece(coded[i]); errors.Is(err, kodr.ErrAllUsefulPiecesReceived) {
+			break
 		}
+	}
 
-		if err := dec.AddPiece(coded[i]); err != nil {
-			t.Fatal(err.Error())
-		}
+	if !dec.IsDecoded() {
+		t.Fatal("expected to be fully decoded !")
 	}
 
 	for i := 0; i < codedPieceCount-pieceCount; i++ {

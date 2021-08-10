@@ -22,14 +22,20 @@ func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, codedPieceCount, piece
 	}
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < pieceCount; i++ {
-		if _, err := dec.GetPieces(); !(err != nil && errors.Is(err, kodr.ErrMoreUsefulPiecesRequired)) {
-			t.Fatal("expected error indicating more pieces are required for decoding")
+	for i := 0; i < codedPieceCount; i++ {
+		if i < pieceCount {
+			if _, err := dec.GetPieces(); !(err != nil && errors.Is(err, kodr.ErrMoreUsefulPiecesRequired)) {
+				t.Fatal("expected error indicating more pieces are required for decoding")
+			}
 		}
 
-		if err := dec.AddPiece(recoded[i]); err != nil {
-			t.Fatal(err.Error())
+		if err := dec.AddPiece(recoded[i]); errors.Is(err, kodr.ErrAllUsefulPiecesReceived) {
+			break
 		}
+	}
+
+	if !dec.IsDecoded() {
+		t.Fatal("expected to be fully decoded !")
 	}
 
 	for i := 0; i < codedPieceCount-pieceCount; i++ {
