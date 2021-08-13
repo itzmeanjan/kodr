@@ -7,17 +7,21 @@ import (
 )
 
 type FullRLNCDecoder struct {
-	expected uint
-	useful   uint
-	received uint
-	field    *galoisfield.GF
-	pieces   []*kodr.CodedPiece
-	rref     matrix.Matrix
+	expected, useful, received uint
+	state                      *matrix.DecoderState
 }
 
 // PieceLength - Returns piece length in bytes
+//
+// If no pieces are yet added to decoder state, then
+// returns 0, denoting **unknown**
 func (d *FullRLNCDecoder) PieceLength() uint {
-	return uint(len(d.pieces[0].Piece))
+	if d.received > 0 {
+		coded := d.state.CodedPieceMatrix()
+		return coded.Cols()
+	}
+
+	return 0
 }
 
 // IsDecoded - Use it for checking whether more piece
@@ -40,45 +44,38 @@ func (d *FullRLNCDecoder) Required() uint {
 // augmented matrix ( coding vector + coded piece )
 // is rref-ed, to keep it as ready as possible for consuming
 // decoded pieces
+//
+// Note: As soon as all pieces are decoded, no more calls to
+// this method does anything useful --- so better check for error & proceed !
 func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
-	d.pieces = append(d.pieces, piece)
-	d.received++
-	if !(d.received > 1) {
-		d.useful++
-		return nil
-	}
-	// no more piece collection is required, decoding
-	// has been performed successfully
-	//
 	// good time to start reading decoded pieces
 	if d.IsDecoded() {
 		return kodr.ErrAllUsefulPiecesReceived
 	}
 
-	if d.rref == nil {
-		rref := make(matrix.Matrix, d.received)
-		for i := range rref {
-			rref[i] = d.pieces[i].Flatten()
-		}
-
-		d.rref = rref
-	} else {
-		d.rref = append(d.rref, piece.Flatten())
+	d.state.AddPiece(piece)
+	d.received++
+	if !(d.received > 1) {
+		d.useful++
+		return nil
 	}
 
-	d.rref.Rref(d.field)
-	d.useful = d.rref.Rank_()
+	d.state.Rref()
+	d.useful = d.state.Rank()
 	return nil
 }
 
-// GetPiece - Get a decoded piece by index, given full
-// decoding has happened
+// GetPiece - Get a decoded piece by index, may ( not ) succeed !
+//
+// Note: It's not necessary that full decoding needs to happen
+// for this method to return something useful
+//
+// If M-many pieces are received among N-many expected ( read M <= N )
+// then pieces with index in [0..M] ( remember upper bound exclusive )
+// can be attempted to be consumed, given algebric structure has revealed
+// requested piece at index `i`
 func (d *FullRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
-	if !d.IsDecoded() || i >= d.useful {
-		return nil, kodr.ErrMoreUsefulPiecesRequired
-	}
-
-	return d.rref[i][uint(len(d.rref[i]))-d.PieceLength():], nil
+	return d.state.GetPiece(i)
 }
 
 // GetPieces - Get a list of all decoded pieces, given full
@@ -90,9 +87,12 @@ func (d *FullRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 
 	pieces := make([]kodr.Piece, 0, d.useful)
 	for i := 0; i < int(d.useful); i++ {
-		// safe to ignore error, because I've
-		// already checked it above
-		piece, _ := d.GetPiece(uint(i))
+		// error mustn't happen at this point, it should
+		// have been returned fromvery first `if-block` in function
+		piece, err := d.GetPiece(uint(i))
+		if err != nil {
+			return nil, err
+		}
 		pieces = append(pieces, piece)
 	}
 	return pieces, nil
@@ -107,5 +107,7 @@ func (d *FullRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 // which is generally equal to original #-of pieces, decoded pieces
 // can be read back
 func NewFullRLNCDecoder(pieceCount uint) *FullRLNCDecoder {
-	return &FullRLNCDecoder{expected: pieceCount, field: galoisfield.DefaultGF256, pieces: make([]*kodr.CodedPiece, 0)}
+	gf := galoisfield.DefaultGF256
+	state := matrix.NewDecoderStateWithPieceCount(gf, pieceCount)
+	return &FullRLNCDecoder{expected: pieceCount, state: state}
 }

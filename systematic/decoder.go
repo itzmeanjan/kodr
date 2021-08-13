@@ -8,14 +8,20 @@ import (
 
 type SystematicRLNCDecoder struct {
 	expected, useful, received uint
-	field                      *galoisfield.GF
-	pieces                     []*kodr.CodedPiece
-	rref                       matrix.Matrix
+	state                      *matrix.DecoderState
 }
 
 // Each piece of N-many bytes
+//
+// Note: If no pieces are yet added to decoder state, then
+// returns 0, denoting **unknown**
 func (s *SystematicRLNCDecoder) PieceLength() uint {
-	return uint(len(s.pieces[0].Piece))
+	if s.received > 0 {
+		coded := s.state.CodedPieceMatrix()
+		return coded.Cols()
+	}
+
+	return 0
 }
 
 // Already decoded back to original pieces, with collected pieces ?
@@ -39,44 +45,33 @@ func (s *SystematicRLNCDecoder) Required() uint {
 // If all required pieces are already collected i.e. successful decoding
 // has happened --- new pieces to be discarded, with an error denoting same
 func (s *SystematicRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
-	s.pieces = append(s.pieces, piece)
+	if s.IsDecoded() {
+		return kodr.ErrAllUsefulPiecesReceived
+	}
+
+	s.state.AddPiece(piece)
 	s.received++
 	if !(s.received > 1) {
 		s.useful++
 		return nil
 	}
-	// no more piece collection is required, decoding
-	// has been performed successfully
-	//
-	// good time to start reading decoded pieces
-	if s.IsDecoded() {
-		return kodr.ErrAllUsefulPiecesReceived
-	}
 
-	if s.rref == nil {
-		rref := make(matrix.Matrix, s.received)
-		for i := range rref {
-			rref[i] = s.pieces[i].Flatten()
-		}
-
-		s.rref = rref
-	} else {
-		s.rref = append(s.rref, piece.Flatten())
-	}
-
-	s.rref.Rref(s.field)
-	s.useful = s.rref.Rank_()
+	s.state.Rref()
+	s.useful = s.state.Rank()
 	return nil
 }
 
-// After full decoding has happened, this method can be used for finding
-// i-th original piece, among N-pieces coded together --- so i < N, always
+// GetPiece - Get a decoded piece by index, may ( not ) succeed !
+//
+// Note: It's not necessary that full decoding needs to happen
+// for this method to return something useful
+//
+// If M-many pieces are received among N-many expected ( read M <= N )
+// then pieces with index in [0..M] ( remember upper bound exclusive )
+// can be attempted to be consumed, given algebric structure has revealed
+// requested piece at index `i`
 func (s *SystematicRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
-	if !s.IsDecoded() || i >= s.useful {
-		return nil, kodr.ErrMoreUsefulPiecesRequired
-	}
-
-	return s.rref[i][uint(len(s.rref[i]))-s.PieceLength():], nil
+	return s.state.GetPiece(i)
 }
 
 // All original pieces in order --- only when full decoding has happened
@@ -87,15 +82,16 @@ func (s *SystematicRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 
 	pieces := make([]kodr.Piece, 0, s.useful)
 	for i := 0; i < int(s.useful); i++ {
-		// safe to ignore error, because I've
-		// already checked it above
-		piece, _ := s.GetPiece(uint(i))
+		piece, err := s.GetPiece(uint(i))
+		if err != nil {
+			return nil, err
+		}
 		pieces = append(pieces, piece)
 	}
 	return pieces, nil
 }
 
-// Pieces coded by systematic mean, alogn with randomly coded pieces,
+// Pieces coded by systematic mean, along with randomly coded pieces,
 // are decoded with this decoder
 //
 // @note Actually FullRLNCDecoder could have been used for same purpose
@@ -105,5 +101,7 @@ func (s *SystematicRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
 // systematic coded pieces ( vectors )/ removing this
 // in some future date
 func NewSystematicRLNCDecoder(pieceCount uint) *SystematicRLNCDecoder {
-	return &SystematicRLNCDecoder{expected: pieceCount, field: galoisfield.DefaultGF256, pieces: make([]*kodr.CodedPiece, 0)}
+	gf := galoisfield.DefaultGF256
+	state := matrix.NewDecoderStateWithPieceCount(gf, pieceCount)
+	return &SystematicRLNCDecoder{expected: pieceCount, state: state}
 }
