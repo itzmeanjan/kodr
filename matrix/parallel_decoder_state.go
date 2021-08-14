@@ -45,7 +45,7 @@ type addRequest struct {
 // decoded piece consumption request
 type pieceRequest struct {
 	idx  uint64
-	resp chan *kodr.Piece
+	resp chan kodr.Piece
 	err  chan error
 }
 
@@ -201,7 +201,7 @@ OUT:
 			}
 
 			if p.IsDecoded() {
-				req.resp <- (*kodr.Piece)(&p.coded[req.idx])
+				req.resp <- p.coded[req.idx]
 				continue OUT
 			}
 
@@ -231,7 +231,7 @@ OUT:
 				continue OUT
 			}
 
-			req.resp <- (*kodr.Piece)(&p.coded[req.idx])
+			req.resp <- p.coded[req.idx]
 			continue OUT
 
 		}
@@ -302,7 +302,7 @@ func (p *ParallelDecoderState) IsDecoded() bool {
 // Fetch decoded piece by index, can also return piece when not fully
 // decoded, given requested piece is decoded
 func (p *ParallelDecoderState) GetPiece(idx uint64) (kodr.Piece, error) {
-	respChan := make(chan *kodr.Piece, 1)
+	respChan := make(chan kodr.Piece, 1)
 	errChan := make(chan error, 1)
 	req := pieceRequest{idx: idx, resp: respChan, err: errChan}
 
@@ -314,7 +314,7 @@ func (p *ParallelDecoderState) GetPiece(idx uint64) (kodr.Piece, error) {
 	case err := <-errChan:
 		return nil, err
 	case piece := <-respChan:
-		return *piece, nil
+		return piece, nil
 	}
 }
 
