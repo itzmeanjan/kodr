@@ -2,6 +2,7 @@ package matrix
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
@@ -19,22 +20,30 @@ const (
 type ParallelDecoderState struct {
 	field *galoisfield.GF
 	// this is generation size = G
-	pieceCount uint
+	pieceCount uint64
 	// #-of pieces received already
-	receivedCount uint
+	receivedCount uint64
 	// useful piece count i.e. linearly
 	// independent pieces decoder has received
-	useful         uint
-	coeffs, coded  Matrix
-	workerQueue    []*work
-	workerChans    []chan uint64
-	supervisorChan chan *kodr.CodedPiece
+	useful                 uint64
+	coeffs, coded          Matrix
+	decoded                bool
+	workerQueue            []*work
+	workerChans            []chan uint64
+	supervisorAddPieceChan chan *kodr.CodedPiece
+	supervisorGetPieceChan chan *pieceRequest
+}
+
+type pieceRequest struct {
+	idx  uint64
+	resp chan *kodr.Piece
+	err  chan error
 }
 
 type work struct {
-	// 0-based work index which monotonically increases
-	idx            uint
-	srcRow, dstRow uint
+	// which two rows of coded data matrix are involved
+	// in this row operation
+	srcRow, dstRow uint64
 	// weight is element of coefficient
 	// matrix i.e. field element
 	weight byte
@@ -44,13 +53,10 @@ type work struct {
 
 type workerState struct {
 	workerChan             chan uint64
-	decoderState           *ParallelDecoderState
-	currentWorkIdx         uint
-	totalWorkCount         uint
 	columnStart, columnEnd uint
 }
 
-func (p *ParallelDecoderState) createWork(src, dst uint, weight byte, op OP) {
+func (p *ParallelDecoderState) createWork(src, dst uint64, weight byte, op OP) {
 	w := work{srcRow: src, dstRow: dst, weight: weight, op: op}
 	p.workerQueue = append(p.workerQueue, &w)
 	idx := uint(len(p.workerQueue) - 1)
@@ -69,10 +75,10 @@ OUT:
 		case <-ctx.Done():
 			break OUT
 
-		case codedPiece := <-p.supervisorChan:
+		case codedPiece := <-p.supervisorAddPieceChan:
 			// done with decoding, no need to work
 			// on new coded piece !
-			if p.useful >= p.pieceCount {
+			if p.IsDecoded() {
 				continue OUT
 			}
 
@@ -80,10 +86,10 @@ OUT:
 			p.coded = append(p.coded, codedPiece.Piece)
 
 			// index of current piece of interest
-			idx := uint(len(p.coeffs) - 1)
+			idx := uint64(len(p.coeffs) - 1)
 
 			// --- Stage A begins ---
-			for j := uint(0); j < idx; j++ {
+			for j := uint64(0); j < idx; j++ {
 				weight := p.coeffs[idx][j]
 
 				for k := j + 1; k < p.pieceCount; k++ {
@@ -115,12 +121,12 @@ OUT:
 				copy((p.coded)[idx:], (p.coded)[idx+1:])
 				p.coded = (p.coded)[:len(p.coded)-1]
 
-				p.useful = uint(len(p.coeffs))
+				atomic.StoreUint64(&p.useful, uint64(p.coeffs.Rows()))
 				continue OUT
 			}
 			// --- Stage B ends ---
 
-			for j := uint(0); j < idx; j++ {
+			for j := uint64(0); j < idx; j++ {
 				weight := p.coeffs[idx][j]
 				p.coeffs[idx][j] = 0
 				p.createWork(j, idx, weight, SUB_AFTER_MULT)
@@ -130,21 +136,21 @@ OUT:
 			// --- Stage C begins ---
 			p.createWork(idx, idx, p.coeffs[idx][non_zero_idx], DIVISION)
 
-			for k := uint(non_zero_idx); k < p.pieceCount; k++ {
+			for k := uint64(non_zero_idx); k < p.pieceCount; k++ {
 				p.coeffs[idx][k] = p.field.Div(p.coeffs[idx][k], p.coeffs[idx][non_zero_idx])
 			}
 			// --- Stage C ends ---
 
 			// --- Stage D begins ---
-			for j := uint(0); j < idx; j++ {
+			for j := uint64(0); j < idx; j++ {
 				p.createWork(idx, j, p.coeffs[j][non_zero_idx], SUB_AFTER_MULT)
 			}
 
-			for j := uint(0); j < idx; j++ {
+			for j := uint64(0); j < idx; j++ {
 				weight := p.coeffs[j][non_zero_idx]
 				p.coeffs[j][non_zero_idx] = 0
 
-				for k := uint(non_zero_idx); k < p.pieceCount; k++ {
+				for k := uint64(non_zero_idx); k < p.pieceCount; k++ {
 					tmp := p.field.Mul(p.coeffs[idx][k], weight)
 					p.coeffs[j][k] = p.field.Add(p.coeffs[j][k], tmp)
 				}
@@ -152,13 +158,58 @@ OUT:
 			// --- Stage D ends ---
 
 			// these many useful pieces decoder has as of now
-			p.useful = uint(len(p.coeffs))
+			atomic.StoreUint64(&p.useful, uint64(p.coeffs.Rows()))
 
 			// because decoding is complete !
 			// workers doesn't need to be alive !
-			if p.useful >= p.pieceCount {
+			if p.IsDecoded() {
 				p.createWork(0, 0, 0, STOP)
 			}
+
+		case req := <-p.supervisorGetPieceChan:
+			if req.idx >= p.pieceCount {
+				req.err <- kodr.ErrPieceOutOfBound
+				continue OUT
+			}
+
+			if req.idx >= uint64(p.coeffs.Rows()) {
+				req.err <- kodr.ErrPieceNotDecodedYet
+				continue OUT
+			}
+
+			if p.IsDecoded() {
+				req.resp <- (*kodr.Piece)(&p.coded[req.idx])
+				continue OUT
+			}
+
+			cols := uint64(p.coeffs.Cols())
+			decoded := true
+
+		NESTED:
+			for i := uint64(0); i < cols; i++ {
+				switch i {
+				case req.idx:
+					if p.coeffs[req.idx][i] != 1 {
+						decoded = false
+						break NESTED
+					}
+
+				default:
+					if p.coeffs[req.idx][i] != 0 {
+						decoded = false
+						break NESTED
+					}
+
+				}
+			}
+
+			if !decoded {
+				req.err <- kodr.ErrPieceNotDecodedYet
+				continue OUT
+			}
+
+			req.resp <- (*kodr.Piece)(&p.coded[req.idx])
+			continue OUT
 
 		}
 	}
@@ -201,16 +252,39 @@ OUT:
 // Before invoking this method, it's good idea to check
 // `IsDecoded` method & refrain from invoking if already
 // decoded
+//
+// It's concurrent safe !
 func (p *ParallelDecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
 	// it's blocking call, if chan is non-bufferred !
 	//
 	// better to use buffered channel
-	p.supervisorChan <- codedPiece
+	p.supervisorAddPieceChan <- codedPiece
 }
 
 // If enough #-of linearly independent pieces are received
 // whole data is decoded, which denotes it's good time
 // to start consuming !
+//
+// It's concurrent safe !
 func (p *ParallelDecoderState) IsDecoded() bool {
-	return p.useful >= p.pieceCount
+	return atomic.LoadUint64(&p.useful) >= p.pieceCount
+}
+
+// Fetch decoded piece by index, can also return piece when not fully
+// decoded, given requested piece is decoded
+func (p *ParallelDecoderState) GetPiece(idx uint64) (kodr.Piece, error) {
+	respChan := make(chan *kodr.Piece, 1)
+	errChan := make(chan error, 1)
+	req := pieceRequest{idx: idx, resp: respChan, err: errChan}
+
+	// this may block !
+	p.supervisorGetPieceChan <- &req
+
+	// waiting for response !
+	select {
+	case err := <-errChan:
+		return nil, err
+	case piece := <-respChan:
+		return *piece, nil
+	}
 }
