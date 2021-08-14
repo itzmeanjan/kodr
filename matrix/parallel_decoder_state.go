@@ -26,12 +26,15 @@ type ParallelDecoderState struct {
 	pieceLen uint64
 	// useful piece count i.e. linearly
 	// independent pieces decoder has received
-	useful                 uint64
-	coeffs, coded          Matrix
-	workerQueue            []*work
-	workerChans            []chan uint64
-	supervisorAddPieceChan chan *addRequest
-	supervisorGetPieceChan chan *pieceRequest
+	useful                    uint64
+	coeffs, coded             Matrix
+	workerQueue               []*work
+	workerChans               []chan uint64
+	supervisorAddPieceChan    chan *addRequest
+	supervisorGetPieceChan    chan *pieceRequest
+	workerCompletedReportChan chan struct{}
+	workerCompletedCount      uint64
+	workerCount               uint64
 }
 
 type addRequest struct {
@@ -74,7 +77,9 @@ func (p *ParallelDecoderState) createWork(src, dst uint64, weight byte, op OP) {
 	}
 }
 
-func (p *ParallelDecoderState) supervise(ctx context.Context) {
+func (p *ParallelDecoderState) supervise(ctx context.Context, cnfChan chan struct{}) {
+	// confirming worker is ready to run !
+	cnfChan <- struct{}{}
 	// how many pieces received
 	receivedCount := 0
 
@@ -92,7 +97,7 @@ OUT:
 
 			// done with decoding, no need to work
 			// on new coded piece !
-			if p.IsDecoded() {
+			if atomic.LoadUint64(&p.useful) >= p.pieceCount {
 				req.err <- kodr.ErrAllUsefulPiecesReceived
 				continue OUT
 			}
@@ -118,20 +123,11 @@ OUT:
 			}
 
 			// --- Stage B begins ---
-			// first column index for row `idx`
-			// which has non-zero field element
-			// after `idx-1` column
-			non_zero_idx := -1
-			for j := idx; j < p.pieceCount; j++ {
-				if p.coeffs[idx][j] != 0 {
-					non_zero_idx = int(j)
-					break
-				}
-			}
-
-			// if no element is found to be non-zero,
-			// it's a linearly dependent piece --- not useful
-			if non_zero_idx == -1 {
+			non_zero_idx := idx
+			pivot := p.coeffs[idx][non_zero_idx]
+			// pivot must be non-zero, linear dependency found,
+			// so discard this piece
+			if pivot == 0 {
 				p.coeffs[idx] = nil
 				copy((p.coeffs)[idx:], (p.coeffs)[idx+1:])
 				p.coeffs = (p.coeffs)[:len(p.coeffs)-1]
@@ -182,9 +178,16 @@ OUT:
 
 			// because decoding is complete !
 			// workers doesn't need to be alive !
-			if p.IsDecoded() {
+			if atomic.LoadUint64(&p.useful) >= p.pieceCount {
 				p.createWork(0, 0, 0, STOP)
 			}
+
+		case <-p.workerCompletedReportChan:
+			// workers must confirm they've completed
+			// all tasks delegated to them
+			//
+			// which finally denotes it's good time to decode !
+			atomic.AddUint64(&p.workerCompletedCount, 1)
 
 		case req := <-p.supervisorGetPieceChan:
 			if req.idx >= p.pieceCount {
@@ -235,7 +238,10 @@ OUT:
 	}
 }
 
-func (p *ParallelDecoderState) work(ctx context.Context, wState *workerState) {
+func (p *ParallelDecoderState) work(ctx context.Context, wState *workerState, cnfChan chan struct{}) {
+	// confirming worker is ready to run !
+	cnfChan <- struct{}{}
+
 OUT:
 	for {
 		select {
@@ -259,6 +265,8 @@ OUT:
 
 			case STOP:
 				// supervisor signals decoding is complete !
+				// worker also confirms it's done
+				p.workerCompletedReportChan <- struct{}{}
 				break OUT
 
 			}
@@ -288,7 +296,7 @@ func (p *ParallelDecoderState) AddPiece(codedPiece *kodr.CodedPiece) error {
 //
 // It's concurrent safe !
 func (p *ParallelDecoderState) IsDecoded() bool {
-	return atomic.LoadUint64(&p.useful) >= p.pieceCount
+	return atomic.LoadUint64(&p.useful) >= p.pieceCount && atomic.LoadUint64(&p.workerCompletedCount) >= p.workerCount
 }
 
 // Fetch decoded piece by index, can also return piece when not fully
@@ -333,10 +341,12 @@ func max(a, b uint64) uint64 {
 }
 
 // Each worker must at least take responsibility of
-// 8-bytes slice of coded data & each of these
+// 32-bytes slice of coded data & each of these
 // worker slices are non-overlapping
+//
+// Can allocate at max #-of available CPU * 2 go-routines
 func workerCount(pieceLen uint64) uint64 {
-	wcount := pieceLen / 8
+	wcount := pieceLen / 1 << 5
 	cpus := uint64(runtime.NumCPU()) << 1
 	if wcount > cpus {
 		return cpus
@@ -346,7 +356,7 @@ func workerCount(pieceLen uint64) uint64 {
 
 // Splitting coded data matrix mutation responsibility among workers
 // Each of these slices are non-overlapping
-func splitWork(pieceLen uint64) []*workerState {
+func splitWork(pieceLen, pieceCount uint64) []*workerState {
 	wcount := workerCount(pieceLen)
 	span := pieceLen / wcount
 	workers := make([]*workerState, 0, wcount)
@@ -358,7 +368,7 @@ func splitWork(pieceLen uint64) []*workerState {
 		}
 
 		ws := workerState{
-			workerChan:  make(chan uint64, wcount),
+			workerChan:  make(chan uint64, pieceCount),
 			columnStart: start,
 			columnEnd:   end,
 		}
@@ -368,30 +378,47 @@ func splitWork(pieceLen uint64) []*workerState {
 }
 
 func NewParallelDecoderState(ctx context.Context, pieceCount, pieceLen uint64) *ParallelDecoderState {
-	splitted := splitWork(pieceLen)
+	splitted := splitWork(pieceLen, pieceCount)
+	wc := len(splitted)
 
 	dec := ParallelDecoderState{
-		field:                  galoisfield.DefaultGF256,
-		pieceCount:             pieceCount,
-		pieceLen:               pieceLen,
-		coeffs:                 make([][]byte, 0, pieceCount),
-		coded:                  make([][]byte, 0, pieceCount),
-		workerQueue:            make([]*work, 0),
-		supervisorAddPieceChan: make(chan *addRequest, pieceCount),
-		supervisorGetPieceChan: make(chan *pieceRequest, 1),
+		field:                     galoisfield.DefaultGF256,
+		pieceCount:                pieceCount,
+		pieceLen:                  pieceLen,
+		coeffs:                    make([][]byte, 0, pieceCount),
+		coded:                     make([][]byte, 0, pieceCount),
+		workerQueue:               make([]*work, 0),
+		supervisorAddPieceChan:    make(chan *addRequest, pieceCount),
+		supervisorGetPieceChan:    make(chan *pieceRequest, 1),
+		workerCompletedReportChan: make(chan struct{}, wc),
+		workerCount:               uint64(wc),
 	}
 
-	workerChans := make([]chan uint64, 0, len(splitted))
-	for i := 0; i < len(splitted); i++ {
+	// wc + 1 because those many go-routines to be
+	// run for decoding i.e. (1 supervisor + wc-workers)
+	cnfChan := make(chan struct{}, wc+1)
+
+	workerChans := make([]chan uint64, 0, wc)
+	for i := 0; i < wc; i++ {
 		func(idx int) {
 			workerChans = append(workerChans, splitted[i].workerChan)
 			// each worker runs on its own go-routine
-			go dec.work(ctx, splitted[idx])
+			go dec.work(ctx, splitted[idx], cnfChan)
 		}(i)
 	}
 
 	dec.workerChans = workerChans
 	// supervisor runs on its own go-routine
-	go dec.supervise(ctx)
+	go dec.supervise(ctx, cnfChan)
+
+	// wait for all components to start working !
+	running := 0
+	for range cnfChan {
+		running++
+		if running >= wc+1 {
+			break
+		}
+	}
+
 	return &dec
 }
