@@ -104,11 +104,6 @@ OUT:
 			p.coeffs = append(p.coeffs, codedPiece.Vector)
 			p.coded = append(p.coded, codedPiece.Piece)
 
-			// minimum 2 pieces are requyired to start working
-			if receivedCount < 2 {
-				continue OUT
-			}
-
 			// index of current piece of interest
 			idx := uint64(len(p.coeffs) - 1)
 
@@ -158,10 +153,11 @@ OUT:
 			// --- Stage A ends ---
 
 			// --- Stage C begins ---
-			p.createWork(idx, idx, p.coeffs[idx][non_zero_idx], DIVISION)
+			weight := p.coeffs[idx][non_zero_idx]
+			p.createWork(idx, idx, weight, DIVISION)
 
 			for k := uint64(non_zero_idx); k < p.pieceCount; k++ {
-				p.coeffs[idx][k] = p.field.Div(p.coeffs[idx][k], p.coeffs[idx][non_zero_idx])
+				p.coeffs[idx][k] = p.field.Div(p.coeffs[idx][k], weight)
 			}
 			// --- Stage C ends ---
 
@@ -174,7 +170,7 @@ OUT:
 				weight := p.coeffs[j][non_zero_idx]
 				p.coeffs[j][non_zero_idx] = 0
 
-				for k := uint64(non_zero_idx); k < p.pieceCount; k++ {
+				for k := uint64(non_zero_idx + 1); k < p.pieceCount; k++ {
 					tmp := p.field.Mul(p.coeffs[idx][k], weight)
 					p.coeffs[j][k] = p.field.Add(p.coeffs[j][k], tmp)
 				}
@@ -258,7 +254,7 @@ OUT:
 
 			case DIVISION:
 				for i := wState.columnStart; i <= wState.columnEnd; i++ {
-					p.coded[w.dstRow][i] = p.field.Add(p.coded[w.srcRow][i], w.weight)
+					p.coded[w.dstRow][i] = p.field.Div(p.coded[w.srcRow][i], w.weight)
 				}
 
 			case STOP:
@@ -329,6 +325,13 @@ func (p *ParallelDecoderState) CodedPieceMatrix() Matrix {
 	return p.coded
 }
 
+func max(a, b uint64) uint64 {
+	if a >= b {
+		return a
+	}
+	return b
+}
+
 // Each worker must at least take responsibility of
 // 8-bytes slice of coded data & each of these
 // worker slices are non-overlapping
@@ -338,7 +341,7 @@ func workerCount(pieceLen uint64) uint64 {
 	if wcount > cpus {
 		return cpus
 	}
-	return wcount
+	return max(wcount, 1)
 }
 
 // Splitting coded data matrix mutation responsibility among workers
