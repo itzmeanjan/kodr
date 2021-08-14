@@ -75,6 +75,9 @@ func (p *ParallelDecoderState) createWork(src, dst uint64, weight byte, op OP) {
 }
 
 func (p *ParallelDecoderState) supervise(ctx context.Context) {
+	// how many pieces received
+	receivedCount := 0
+
 OUT:
 	for {
 		select {
@@ -96,9 +99,15 @@ OUT:
 
 			// piece to be processed further, returning nil error !
 			req.err <- nil
+			receivedCount++
 			codedPiece := req.piece
 			p.coeffs = append(p.coeffs, codedPiece.Vector)
 			p.coded = append(p.coded, codedPiece.Piece)
+
+			// minimum 2 pieces are requyired to start working
+			if receivedCount < 2 {
+				continue OUT
+			}
 
 			// index of current piece of interest
 			idx := uint64(len(p.coeffs) - 1)
