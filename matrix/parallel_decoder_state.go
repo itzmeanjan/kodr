@@ -12,6 +12,8 @@ type OP uint8
 const (
 	SUB_AFTER_MULT OP = iota + 1
 	DIVISION
+	// special signal denoting workers should stop working
+	STOP
 )
 
 type ParallelDecoderState struct {
@@ -19,13 +21,14 @@ type ParallelDecoderState struct {
 	// this is generation size = G
 	pieceCount uint
 	// #-of pieces received already
-	receivedCount  uint
+	receivedCount uint
+	// useful piece count i.e. linearly
+	// independent pieces decoder has received
+	useful         uint
 	coeffs, coded  Matrix
-	workCount      uint
 	workerQueue    []*work
-	workerCount    uint
-	workerChans    []chan struct{}
-	supervisorChan chan uint
+	workerChans    []chan uint64
+	supervisorChan chan *kodr.CodedPiece
 }
 
 type work struct {
@@ -40,7 +43,7 @@ type work struct {
 }
 
 type workerState struct {
-	workerChan             chan struct{}
+	workerChan             chan uint64
 	decoderState           *ParallelDecoderState
 	currentWorkIdx         uint
 	totalWorkCount         uint
@@ -50,42 +53,49 @@ type workerState struct {
 func (p *ParallelDecoderState) createWork(src, dst uint, weight byte, op OP) {
 	w := work{srcRow: src, dstRow: dst, weight: weight, op: op}
 	p.workerQueue = append(p.workerQueue, &w)
+	idx := uint(len(p.workerQueue) - 1)
+
+	for i := 0; i < len(p.workerChans); i++ {
+		// it's blocking call, better to use buffered channel,
+		// then it won't probably be !
+		p.workerChans[i] <- uint64(idx)
+	}
 }
 
 func (p *ParallelDecoderState) supervise(ctx context.Context) {
-	var (
-		linearlyDependentPieceCount uint = 0
-	)
-
 OUT:
 	for {
 		select {
 		case <-ctx.Done():
 			break OUT
 
-		case idx := <-p.supervisorChan:
-			// useful when linearly dependent pieces are received
-			idx -= linearlyDependentPieceCount
+		case codedPiece := <-p.supervisorChan:
+			// done with decoding, no need to work
+			// on new coded piece !
+			if p.useful >= p.pieceCount {
+				continue OUT
+			}
+
+			p.coeffs = append(p.coeffs, codedPiece.Vector)
+			p.coded = append(p.coded, codedPiece.Piece)
+
+			// index of current piece of interest
+			idx := uint(len(p.coeffs) - 1)
 
 			// --- Stage A begins ---
 			for j := uint(0); j < idx; j++ {
-				p.createWork(j, idx, p.coeffs[idx][j], SUB_AFTER_MULT)
-			}
-
-			for j := uint(0); j < idx; j++ {
 				weight := p.coeffs[idx][j]
-				p.coeffs[idx][j] = 0
 
-				for k := j; k < p.pieceCount; k++ {
+				for k := j + 1; k < p.pieceCount; k++ {
 					tmp := p.field.Mul(p.coeffs[j][k], weight)
 					p.coeffs[idx][k] = p.field.Add(p.coeffs[idx][k], tmp)
 				}
 			}
-			// --- Stage A ends ---
 
 			// --- Stage B begins ---
 			// first column index for row `idx`
 			// which has non-zero field element
+			// after `idx-1` column
 			non_zero_idx := -1
 			for j := idx; j < p.pieceCount; j++ {
 				if p.coeffs[idx][j] != 0 {
@@ -97,15 +107,25 @@ OUT:
 			// if no element is found to be non-zero,
 			// it's a linearly dependent piece --- not useful
 			if non_zero_idx == -1 {
-				linearlyDependentPieceCount += 1
-
 				p.coeffs[idx] = nil
 				copy((p.coeffs)[idx:], (p.coeffs)[idx+1:])
 				p.coeffs = (p.coeffs)[:len(p.coeffs)-1]
 
+				p.coded[idx] = nil
+				copy((p.coded)[idx:], (p.coded)[idx+1:])
+				p.coded = (p.coded)[:len(p.coded)-1]
+
+				p.useful = uint(len(p.coeffs))
 				continue OUT
 			}
 			// --- Stage B ends ---
+
+			for j := uint(0); j < idx; j++ {
+				weight := p.coeffs[idx][j]
+				p.coeffs[idx][j] = 0
+				p.createWork(j, idx, weight, SUB_AFTER_MULT)
+			}
+			// --- Stage A ends ---
 
 			// --- Stage C begins ---
 			p.createWork(idx, idx, p.coeffs[idx][non_zero_idx], DIVISION)
@@ -130,24 +150,67 @@ OUT:
 				}
 			}
 			// --- Stage D ends ---
+
+			// these many useful pieces decoder has as of now
+			p.useful = uint(len(p.coeffs))
+
+			// because decoding is complete !
+			// workers doesn't need to be alive !
+			if p.useful >= p.pieceCount {
+				p.createWork(0, 0, 0, STOP)
+			}
+
 		}
 	}
 }
 
-func (p *ParallelDecoderState) AddPiece(coding_vector kodr.CodingVector, coded_data kodr.Piece) {
-	p.coeffs = append(p.coeffs, coding_vector)
-	p.coded = append(p.coded, coded_data)
-	p.receivedCount += 1
+func (p *ParallelDecoderState) work(ctx context.Context, wState *workerState) {
+OUT:
+	for {
+		select {
+		case <-ctx.Done():
+			break OUT
 
-	// supervisor should start working only when atleast
-	// 2 coded pieces are received
-	if p.receivedCount < 2 {
-		return
+		case idx := <-wState.workerChan:
+			w := p.workerQueue[idx]
+
+			switch w.op {
+			case SUB_AFTER_MULT:
+				for i := wState.columnStart; i <= wState.columnEnd; i++ {
+					tmp := p.field.Mul(p.coded[w.srcRow][i], w.weight)
+					p.coded[w.dstRow][i] = p.field.Add(p.coded[w.dstRow][i], tmp)
+				}
+
+			case DIVISION:
+				for i := wState.columnStart; i <= wState.columnEnd; i++ {
+					p.coded[w.dstRow][i] = p.field.Add(p.coded[w.srcRow][i], w.weight)
+				}
+
+			case STOP:
+				// supervisor signals decoding is complete !
+				break OUT
+
+			}
+		}
 	}
+}
 
+// Adds new coded piece to decoder state, so that it can process
+// and progressively decoded pieces
+//
+// Before invoking this method, it's good idea to check
+// `IsDecoded` method & refrain from invoking if already
+// decoded
+func (p *ParallelDecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
 	// it's blocking call, if chan is non-bufferred !
-	// lets supervisor know coded piece index to work on
 	//
-	// -1 added due to 0 based indexing
-	p.supervisorChan <- p.receivedCount - 1
+	// better to use buffered channel
+	p.supervisorChan <- codedPiece
+}
+
+// If enough #-of linearly independent pieces are received
+// whole data is decoded, which denotes it's good time
+// to start consuming !
+func (p *ParallelDecoderState) IsDecoded() bool {
+	return p.useful >= p.pieceCount
 }
