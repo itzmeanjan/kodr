@@ -310,38 +310,32 @@ func (p *ParallelDecoderState) CodedPieceMatrix() Matrix {
 }
 
 // Each worker must at least take responsibility of
-// 2-bytes slice of coded data & each of these
+// 8-bytes slice of coded data & each of these
 // worker slices are non-overlapping
-func workerCount_(pieceLen uint64) uint64 {
-	// it's actually double of available CPU count
+func workerCount(pieceLen uint64) uint64 {
+	wcount := pieceLen / 8
 	cpus := uint64(runtime.NumCPU()) << 1
-	if pieceLen/cpus > 1 {
+	if wcount > cpus {
 		return cpus
 	}
-
-	return cpus >> 1
+	return wcount
 }
 
 // Splitting coded data matrix mutation responsibility among workers
 // Each of these slices are non-overlapping
-//
-// workerCount = 0 denotes user wants to go with `kodr` chosen value
-func splitWork(workerCount, pieceLen uint64) []*workerState {
-	if workerCount == 0 {
-		workerCount = workerCount_(pieceLen)
-	}
-
-	span := pieceLen / workerCount
-	workers := make([]*workerState, 0, workerCount)
-	for i := uint64(0); i < workerCount; i++ {
+func splitWork(pieceLen uint64) []*workerState {
+	wcount := workerCount(pieceLen)
+	span := pieceLen / wcount
+	workers := make([]*workerState, 0, wcount)
+	for i := uint64(0); i < wcount; i++ {
 		start := span * i
 		end := span*(i+1) - 1
-		if i == workerCount-1 {
+		if i == wcount-1 {
 			end = pieceLen - 1
 		}
 
 		ws := workerState{
-			workerChan:  make(chan uint64, workerCount),
+			workerChan:  make(chan uint64, wcount),
 			columnStart: start,
 			columnEnd:   end,
 		}
@@ -351,7 +345,7 @@ func splitWork(workerCount, pieceLen uint64) []*workerState {
 }
 
 func NewParallelDecoderState(ctx context.Context, pieceCount, pieceLen uint64) *ParallelDecoderState {
-	splitted := splitWork(0, pieceLen)
+	splitted := splitWork(pieceLen)
 
 	dec := ParallelDecoderState{
 		field:                  galoisfield.DefaultGF256,
