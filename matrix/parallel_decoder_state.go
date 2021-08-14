@@ -2,6 +2,7 @@ package matrix
 
 import (
 	"context"
+	"runtime"
 	"sync/atomic"
 
 	"github.com/cloud9-tools/go-galoisfield"
@@ -21,19 +22,19 @@ type ParallelDecoderState struct {
 	field *galoisfield.GF
 	// this is generation size = G
 	pieceCount uint64
-	// #-of pieces received already
-	receivedCount uint64
+	// length of coded data part of coded piece
+	pieceLen uint64
 	// useful piece count i.e. linearly
 	// independent pieces decoder has received
 	useful                 uint64
 	coeffs, coded          Matrix
-	decoded                bool
 	workerQueue            []*work
 	workerChans            []chan uint64
 	supervisorAddPieceChan chan *kodr.CodedPiece
 	supervisorGetPieceChan chan *pieceRequest
 }
 
+// decoded piece consumption request
 type pieceRequest struct {
 	idx  uint64
 	resp chan *kodr.Piece
@@ -53,7 +54,7 @@ type work struct {
 
 type workerState struct {
 	workerChan             chan uint64
-	columnStart, columnEnd uint
+	columnStart, columnEnd uint64
 }
 
 func (p *ParallelDecoderState) createWork(src, dst uint64, weight byte, op OP) {
@@ -76,6 +77,10 @@ OUT:
 			break OUT
 
 		case codedPiece := <-p.supervisorAddPieceChan:
+			if codedPiece.Len() != uint(p.pieceCount+p.pieceLen) {
+				continue OUT
+			}
+
 			// done with decoding, no need to work
 			// on new coded piece !
 			if p.IsDecoded() {
@@ -287,4 +292,89 @@ func (p *ParallelDecoderState) GetPiece(idx uint64) (kodr.Piece, error) {
 	case piece := <-respChan:
 		return *piece, nil
 	}
+}
+
+// Current state of coding coefficient matrix
+//
+// NOTE: Don't mutate matrix, use only for writing test cases !
+func (p *ParallelDecoderState) CoefficientMatrix() Matrix {
+	return p.coeffs
+}
+
+// Current state of coded piece matrix, which is updated
+// along side coding coefficient matrix ( during parallel rref )
+//
+// NOTE: Don't mutate matrix, use only for writing test cases !
+func (p *ParallelDecoderState) CodedPieceMatrix() Matrix {
+	return p.coded
+}
+
+// Each worker must at least take responsibility of
+// 2-bytes slice of coded data & each of these
+// worker slices are non-overlapping
+func workerCount_(pieceLen uint64) uint64 {
+	// it's actually double of available CPU count
+	cpus := uint64(runtime.NumCPU()) << 1
+	if pieceLen/cpus > 1 {
+		return cpus
+	}
+
+	return cpus >> 1
+}
+
+// Splitting coded data matrix mutation responsibility among workers
+// Each of these slices are non-overlapping
+//
+// workerCount = 0 denotes user wants to go with `kodr` chosen value
+func splitWork(workerCount, pieceLen uint64) []*workerState {
+	if workerCount == 0 {
+		workerCount = workerCount_(pieceLen)
+	}
+
+	span := pieceLen / workerCount
+	workers := make([]*workerState, 0, workerCount)
+	for i := uint64(0); i < workerCount; i++ {
+		start := span * i
+		end := span*(i+1) - 1
+		if i == workerCount-1 {
+			end = pieceLen - 1
+		}
+
+		ws := workerState{
+			workerChan:  make(chan uint64, workerCount),
+			columnStart: start,
+			columnEnd:   end,
+		}
+		workers = append(workers, &ws)
+	}
+	return workers
+}
+
+func NewParallelDecoderState(ctx context.Context, pieceCount, pieceLen uint64) *ParallelDecoderState {
+	splitted := splitWork(0, pieceLen)
+
+	dec := ParallelDecoderState{
+		field:                  galoisfield.DefaultGF256,
+		pieceCount:             pieceCount,
+		pieceLen:               pieceLen,
+		coeffs:                 make([][]byte, 0, pieceCount),
+		coded:                  make([][]byte, 0, pieceCount),
+		workerQueue:            make([]*work, 0),
+		supervisorAddPieceChan: make(chan *kodr.CodedPiece, pieceCount),
+		supervisorGetPieceChan: make(chan *pieceRequest, 1),
+	}
+
+	workerChans := make([]chan uint64, 0, len(splitted))
+	for i := 0; i < len(splitted); i++ {
+		func(idx int) {
+			workerChans = append(workerChans, splitted[i].workerChan)
+			// each worker runs on its own go-routine
+			go dec.work(ctx, splitted[idx])
+		}(i)
+	}
+
+	dec.workerChans = workerChans
+	// supervisor runs on its own go-routine
+	go dec.supervise(ctx)
+	return &dec
 }
