@@ -30,8 +30,13 @@ type ParallelDecoderState struct {
 	coeffs, coded          Matrix
 	workerQueue            []*work
 	workerChans            []chan uint64
-	supervisorAddPieceChan chan *kodr.CodedPiece
+	supervisorAddPieceChan chan *addRequest
 	supervisorGetPieceChan chan *pieceRequest
+}
+
+type addRequest struct {
+	piece *kodr.CodedPiece
+	err   chan error
 }
 
 // decoded piece consumption request
@@ -76,17 +81,22 @@ OUT:
 		case <-ctx.Done():
 			break OUT
 
-		case codedPiece := <-p.supervisorAddPieceChan:
-			if codedPiece.Len() != uint(p.pieceCount+p.pieceLen) {
+		case req := <-p.supervisorAddPieceChan:
+			if req.piece.Len() != uint(p.pieceCount+p.pieceLen) {
+				req.err <- kodr.ErrCodedPieceSizeMismatch
 				continue OUT
 			}
 
 			// done with decoding, no need to work
 			// on new coded piece !
 			if p.IsDecoded() {
+				req.err <- kodr.ErrAllUsefulPiecesReceived
 				continue OUT
 			}
 
+			// piece to be processed further, returning nil error !
+			req.err <- nil
+			codedPiece := req.piece
 			p.coeffs = append(p.coeffs, codedPiece.Vector)
 			p.coded = append(p.coded, codedPiece.Piece)
 
@@ -259,11 +269,12 @@ OUT:
 // decoded
 //
 // It's concurrent safe !
-func (p *ParallelDecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
-	// it's blocking call, if chan is non-bufferred !
-	//
-	// better to use buffered channel
-	p.supervisorAddPieceChan <- codedPiece
+func (p *ParallelDecoderState) AddPiece(codedPiece *kodr.CodedPiece) error {
+	errChan := make(chan error, 1)
+	req := addRequest{piece: codedPiece, err: errChan}
+	p.supervisorAddPieceChan <- &req
+
+	return <-errChan
 }
 
 // If enough #-of linearly independent pieces are received
@@ -354,7 +365,7 @@ func NewParallelDecoderState(ctx context.Context, pieceCount, pieceLen uint64) *
 		coeffs:                 make([][]byte, 0, pieceCount),
 		coded:                  make([][]byte, 0, pieceCount),
 		workerQueue:            make([]*work, 0),
-		supervisorAddPieceChan: make(chan *kodr.CodedPiece, pieceCount),
+		supervisorAddPieceChan: make(chan *addRequest, pieceCount),
 		supervisorGetPieceChan: make(chan *pieceRequest, 1),
 	}
 
