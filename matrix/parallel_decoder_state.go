@@ -31,8 +31,12 @@ type ParallelDecoderState struct {
 	coeffs, coded Matrix
 	// because competing go-routines attempt to
 	// mutate `coded` data matrix
-	lockCoded                 *sync.RWMutex
-	workerQueue               []*work
+	lockCoded   *sync.RWMutex
+	workerQueue []*work
+	// supervisor for work allocation & N-many workers
+	// for work execution attempts to concurrently read from/
+	// write to queue --- making it safe
+	lockWorkerQueue           *sync.RWMutex
 	workerChans               []chan uint64
 	supervisorAddPieceChan    chan *addRequest
 	supervisorGetPieceChan    chan *pieceRequest
@@ -71,8 +75,13 @@ type workerState struct {
 
 func (p *ParallelDecoderState) createWork(src, dst uint64, weight byte, op OP) {
 	w := work{srcRow: src, dstRow: dst, weight: weight, op: op}
+
+	// -- critical section begins --
+	p.lockWorkerQueue.Lock()
 	p.workerQueue = append(p.workerQueue, &w)
 	idx := uint(len(p.workerQueue) - 1)
+	p.lockWorkerQueue.Unlock()
+	// -- ends --
 
 	for i := 0; i < len(p.workerChans); i++ {
 		// it's blocking call, better to use buffered channel,
@@ -271,7 +280,10 @@ OUT:
 			break OUT
 
 		case idx := <-wState.workerChan:
+			// safe reading
+			p.lockWorkerQueue.RLock()
 			w := p.workerQueue[idx]
+			p.lockWorkerQueue.RUnlock()
 
 			switch w.op {
 			case SUB_AFTER_MULT:
@@ -417,6 +429,7 @@ func NewParallelDecoderState(ctx context.Context, pieceCount, pieceLen uint64) *
 		coded:                     make([][]byte, 0, pieceCount),
 		lockCoded:                 &sync.RWMutex{},
 		workerQueue:               make([]*work, 0),
+		lockWorkerQueue:           &sync.RWMutex{},
 		supervisorAddPieceChan:    make(chan *addRequest, pieceCount),
 		supervisorGetPieceChan:    make(chan *pieceRequest, 1),
 		workerCompletedReportChan: make(chan struct{}, wc),
