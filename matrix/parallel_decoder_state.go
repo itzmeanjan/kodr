@@ -3,6 +3,7 @@ package matrix
 import (
 	"context"
 	"runtime"
+	"sync"
 	"sync/atomic"
 
 	"github.com/cloud9-tools/go-galoisfield"
@@ -26,8 +27,11 @@ type ParallelDecoderState struct {
 	pieceLen uint64
 	// useful piece count i.e. linearly
 	// independent pieces decoder has received
-	useful                    uint64
-	coeffs, coded             Matrix
+	useful        uint64
+	coeffs, coded Matrix
+	// because competing go-routines attempt to
+	// mutate `coded` data matrix
+	lockCoded                 *sync.RWMutex
 	workerQueue               []*work
 	workerChans               []chan uint64
 	supervisorAddPieceChan    chan *addRequest
@@ -80,8 +84,6 @@ func (p *ParallelDecoderState) createWork(src, dst uint64, weight byte, op OP) {
 func (p *ParallelDecoderState) supervise(ctx context.Context, cnfChan chan struct{}) {
 	// confirming worker is ready to run !
 	cnfChan <- struct{}{}
-	// how many pieces received
-	receivedCount := 0
 
 OUT:
 	for {
@@ -104,10 +106,18 @@ OUT:
 
 			// piece to be processed further, returning nil error !
 			req.err <- nil
-			receivedCount++
+
 			codedPiece := req.piece
 			p.coeffs = append(p.coeffs, codedPiece.Vector)
+
+			// -- starts --
+			// critical section of code, other
+			// go-routine might attempt to mutate
+			// data matrix at same time
+			p.lockCoded.Lock()
 			p.coded = append(p.coded, codedPiece.Piece)
+			p.lockCoded.Unlock()
+			// -- ends --
 
 			// index of current piece of interest
 			idx := uint64(len(p.coeffs) - 1)
@@ -132,9 +142,13 @@ OUT:
 				copy((p.coeffs)[idx:], (p.coeffs)[idx+1:])
 				p.coeffs = (p.coeffs)[:len(p.coeffs)-1]
 
+				// -- critical section of code begins --
+				p.lockCoded.Lock()
 				p.coded[idx] = nil
 				copy((p.coded)[idx:], (p.coded)[idx+1:])
 				p.coded = (p.coded)[:len(p.coded)-1]
+				p.lockCoded.Unlock()
+				// -- ends --
 
 				atomic.StoreUint64(&p.useful, uint64(p.coeffs.Rows()))
 				continue OUT
@@ -201,7 +215,11 @@ OUT:
 			}
 
 			if p.IsDecoded() {
+				// safe reading
+				p.lockCoded.RLock()
 				req.resp <- p.coded[req.idx]
+				p.lockCoded.RUnlock()
+
 				continue OUT
 			}
 
@@ -231,7 +249,11 @@ OUT:
 				continue OUT
 			}
 
+			// safe reading
+			p.lockCoded.RLock()
 			req.resp <- p.coded[req.idx]
+			p.lockCoded.RUnlock()
+
 			continue OUT
 
 		}
@@ -253,15 +275,21 @@ OUT:
 
 			switch w.op {
 			case SUB_AFTER_MULT:
+
+				p.lockCoded.RLock()
 				for i := wState.columnStart; i <= wState.columnEnd; i++ {
 					tmp := p.field.Mul(p.coded[w.srcRow][i], w.weight)
 					p.coded[w.dstRow][i] = p.field.Add(p.coded[w.dstRow][i], tmp)
 				}
+				p.lockCoded.RUnlock()
 
 			case DIVISION:
+
+				p.lockCoded.RLock()
 				for i := wState.columnStart; i <= wState.columnEnd; i++ {
 					p.coded[w.dstRow][i] = p.field.Div(p.coded[w.srcRow][i], w.weight)
 				}
+				p.lockCoded.RUnlock()
 
 			case STOP:
 				// supervisor signals decoding is complete !
@@ -387,6 +415,7 @@ func NewParallelDecoderState(ctx context.Context, pieceCount, pieceLen uint64) *
 		pieceLen:                  pieceLen,
 		coeffs:                    make([][]byte, 0, pieceCount),
 		coded:                     make([][]byte, 0, pieceCount),
+		lockCoded:                 &sync.RWMutex{},
 		workerQueue:               make([]*work, 0),
 		supervisorAddPieceChan:    make(chan *addRequest, pieceCount),
 		supervisorGetPieceChan:    make(chan *pieceRequest, 1),
