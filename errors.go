@@ -14,4 +14,5 @@ var (
 	ErrCodingVectorLengthMismatch        = errors.New("coding vector length > coded piece length ( in total )")
 	ErrPieceNotDecodedYet                = errors.New("piece not decoded yet, more pieces required")
 	ErrPieceOutOfBound                   = errors.New("requested piece index >= pieceCount ( pieces coded together )")
+	ErrCodedPieceSizeMismatch            = errors.New("received coded piece's size != expected size")
 )
