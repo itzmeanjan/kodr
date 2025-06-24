@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/systematic"
 )
 
@@ -23,8 +24,8 @@ func generateData(n uint) []byte {
 
 // Generates N-many pieces each of M-bytes length, to be used
 // for testing purposes
-func generatePieces(pieceCount uint, pieceLength uint) []kodr.Piece {
-	pieces := make([]kodr.Piece, 0, pieceCount)
+func generatePieces(pieceCount uint, pieceLength uint) []kodr_internals.Piece {
+	pieces := make([]kodr_internals.Piece, 0, pieceCount)
 	for i := 0; i < int(pieceCount); i++ {
 		pieces = append(pieces, generateData(pieceLength))
 	}
@@ -38,7 +39,7 @@ func TestSystematicRLNCCoding(t *testing.T) {
 		pieceCount      uint                              = uint(2<<1 + rand.Intn(2<<8))
 		pieceLength     uint                              = 8192
 		codedPieceCount uint                              = pieceCount * 2
-		pieces          []kodr.Piece                      = generatePieces(pieceCount, pieceLength)
+		pieces          []kodr_internals.Piece            = generatePieces(pieceCount, pieceLength)
 		enc             *systematic.SystematicRLNCEncoder = systematic.NewSystematicRLNCEncoder(pieces)
 	)
 
@@ -82,7 +83,7 @@ func TestNewSystematicRLNC(t *testing.T) {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+		pieces, _, err := kodr_internals.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -102,7 +103,7 @@ func TestNewSystematicRLNC(t *testing.T) {
 			t.Fatalf("Error: %s\n", err.Error())
 		}
 
-		pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+		pieces, _, err := kodr_internals.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -112,7 +113,7 @@ func TestNewSystematicRLNC(t *testing.T) {
 	})
 }
 
-func encoderFlow(t *testing.T, enc *systematic.SystematicRLNCEncoder, dec *systematic.SystematicRLNCDecoder, pieceCount uint, pieces []kodr.Piece) {
+func encoderFlow(t *testing.T, enc *systematic.SystematicRLNCEncoder, dec *systematic.SystematicRLNCDecoder, pieceCount uint, pieces []kodr_internals.Piece) {
 	for {
 		c_piece := enc.CodedPiece()
 

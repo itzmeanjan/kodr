@@ -2,13 +2,13 @@ package systematic
 
 import (
 	"github.com/cloud9-tools/go-galoisfield"
-	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 type SystematicRLNCEncoder struct {
 	currentPieceId uint
 	field          *galoisfield.GF
-	pieces         []kodr.Piece
+	pieces         []kodr_internals.Piece
 	extra          uint
 }
 
@@ -59,12 +59,12 @@ func (s *SystematicRLNCEncoder) Padding() uint {
 
 // Generates a systematic coded piece's coding vector, which has
 // only one non-zero element ( 1 )
-func (s *SystematicRLNCEncoder) systematicCodingVector(idx uint) kodr.CodingVector {
+func (s *SystematicRLNCEncoder) systematicCodingVector(idx uint) kodr_internals.CodingVector {
 	if !(idx < s.PieceCount()) {
 		return nil
 	}
 
-	vector := make(kodr.CodingVector, s.PieceCount())
+	vector := make(kodr_internals.CodingVector, s.PieceCount())
 	vector[idx] = 1
 	return vector
 }
@@ -81,28 +81,28 @@ func (s *SystematicRLNCEncoder) systematicCodingVector(idx uint) kodr.CodingVect
 //
 // Later pieces are coded as they're done in Full RLNC scheme
 // `i` keeps incrementing by +1, until it reaches N
-func (s *SystematicRLNCEncoder) CodedPiece() *kodr.CodedPiece {
+func (s *SystematicRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
 	if s.currentPieceId < s.PieceCount() {
 		// `nil` coding vector can be returned, which is
 		// not being checked at all, as in that case we'll
 		// never get into `if` branch
 		vector := s.systematicCodingVector(s.currentPieceId)
-		piece := make(kodr.Piece, s.PieceSize())
+		piece := make(kodr_internals.Piece, s.PieceSize())
 		copy(piece, s.pieces[s.currentPieceId])
 
 		s.currentPieceId++
-		return &kodr.CodedPiece{
+		return &kodr_internals.CodedPiece{
 			Vector: vector,
 			Piece:  piece,
 		}
 	}
 
-	vector := kodr.GenerateCodingVector(s.PieceCount())
-	piece := make(kodr.Piece, s.PieceSize())
+	vector := kodr_internals.GenerateCodingVector(s.PieceCount())
+	piece := make(kodr_internals.Piece, s.PieceSize())
 	for i := range s.pieces {
 		piece.Multiply(s.pieces[i], vector[i], s.field)
 	}
-	return &kodr.CodedPiece{
+	return &kodr_internals.CodedPiece{
 		Vector: vector,
 		Piece:  piece,
 	}
@@ -112,7 +112,7 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr.CodedPiece {
 // of same length ( in terms of bytes ), this function can be used
 // for creating one systematic RLNC encoder, which delivers coded pieces
 // on-the-fly
-func NewSystematicRLNCEncoder(pieces []kodr.Piece) *SystematicRLNCEncoder {
+func NewSystematicRLNCEncoder(pieces []kodr_internals.Piece) *SystematicRLNCEncoder {
 	return &SystematicRLNCEncoder{currentPieceId: 0, pieces: pieces, field: galoisfield.DefaultGF256}
 }
 
@@ -121,7 +121,7 @@ func NewSystematicRLNCEncoder(pieces []kodr.Piece) *SystematicRLNCEncoder {
 // bytes appended at end of last piece, if required & prepares
 // full RLNC encoder for obtaining coded pieces
 func NewSystematicRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*SystematicRLNCEncoder, error) {
-	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	pieces, padding, err := kodr_internals.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func NewSystematicRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*Syst
 // function generates M-many pieces each of N-bytes size, which are ready
 // to be coded together with full RLNC
 func NewSystematicRLNCEncoderWithPieceSize(data []byte, pieceSize uint) (*SystematicRLNCEncoder, error) {
-	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, padding, err := kodr_internals.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 func main() {
@@ -49,7 +50,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	codedPieces := make([]*kodr.CodedPiece, 0, codedPieceCount)
+	codedPieces := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < int(codedPieceCount); i++ {
 		codedPieces = append(codedPieces, enc.CodedPiece())
 	}
@@ -71,7 +72,7 @@ func main() {
 	)
 
 	rec := full.NewFullRLNCRecoder(codedPieces)
-	recodedPieces := make([]*kodr.CodedPiece, 0, recodedPieceCount)
+	recodedPieces := make([]*kodr_internals.CodedPiece, 0, recodedPieceCount)
 	for i := 0; i < int(recodedPieceCount); i++ {
 		rec_p, err := rec.CodedPiece()
 		if err != nil {

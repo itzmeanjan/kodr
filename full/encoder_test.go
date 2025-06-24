@@ -10,6 +10,7 @@ import (
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 // Generates `N`-bytes of random data from default
@@ -23,16 +24,16 @@ func generateData(n uint) []byte {
 
 // Generates N-many pieces each of M-bytes length, to be used
 // for testing purposes
-func generatePieces(pieceCount uint, pieceLength uint) []kodr.Piece {
-	pieces := make([]kodr.Piece, 0, pieceCount)
+func generatePieces(pieceCount uint, pieceLength uint) []kodr_internals.Piece {
+	pieces := make([]kodr_internals.Piece, 0, pieceCount)
 	for i := 0; i < int(pieceCount); i++ {
 		pieces = append(pieces, generateData(pieceLength))
 	}
 	return pieces
 }
 
-func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPieceCount int, pieces []kodr.Piece) {
-	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
+func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPieceCount int, pieces []kodr_internals.Piece) {
+	coded := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
 		coded = append(coded, enc.CodedPiece())
 	}
@@ -97,7 +98,7 @@ func TestNewFullRLNCEncoderWithPieceCount(t *testing.T) {
 	data := generateData(size)
 	t.Logf("\nTotal Data: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceCount, codedPieceCount)
 
-	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	pieces, _, err := kodr_internals.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -120,7 +121,7 @@ func TestNewFullRLNCEncoderWithPieceSize(t *testing.T) {
 	data := generateData(size)
 	t.Logf("\nTotal Data: %d bytes\nPiece Size: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceSize, pieceCount, codedPieceCount)
 
-	pieces, _, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, _, err := kodr_internals.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

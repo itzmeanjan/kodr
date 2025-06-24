@@ -3,6 +3,7 @@ package matrix
 import (
 	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 type DecoderState struct {
@@ -189,7 +190,7 @@ func (d *DecoderState) CodedPieceMatrix() Matrix {
 // Adds a new coded piece to decoder state, which will hopefully
 // help in decoding pieces, if linearly independent with other rows
 // i.e. read pieces
-func (d *DecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
+func (d *DecoderState) AddPiece(codedPiece *kodr_internals.CodedPiece) {
 	d.coeffs = append(d.coeffs, codedPiece.Vector)
 	d.coded = append(d.coded, codedPiece.Piece)
 }
@@ -199,13 +200,13 @@ func (d *DecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
 // If piece not yet decoded/ requested index is >= #-of
 // pieces coded together, returns error message indicating so
 //
-// Otherwise piece is returned, without any error
+// # Otherwise piece is returned, without any error
 //
 // Note: This method will copy decoded piece into newly allocated memory
 // when whole decoding hasn't yet happened, to prevent any chance
 // that user mistakenly modifies slice returned ( read piece )
 // & that affects next round of decoding ( when new piece is received )
-func (d *DecoderState) GetPiece(idx uint) (kodr.Piece, error) {
+func (d *DecoderState) GetPiece(idx uint) (kodr_internals.Piece, error) {
 	if idx >= d.pieceCount {
 		return nil, kodr.ErrPieceOutOfBound
 	}

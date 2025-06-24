@@ -3,6 +3,7 @@ package full
 import (
 	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/matrix"
 )
 
@@ -47,7 +48,7 @@ func (d *FullRLNCDecoder) Required() uint {
 //
 // Note: As soon as all pieces are decoded, no more calls to
 // this method does anything useful --- so better check for error & proceed !
-func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
+func (d *FullRLNCDecoder) AddPiece(piece *kodr_internals.CodedPiece) error {
 	// good time to start reading decoded pieces
 	if d.IsDecoded() {
 		return kodr.ErrAllUsefulPiecesReceived
@@ -74,18 +75,18 @@ func (d *FullRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 // then pieces with index in [0..M] ( remember upper bound exclusive )
 // can be attempted to be consumed, given algebric structure has revealed
 // requested piece at index `i`
-func (d *FullRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
+func (d *FullRLNCDecoder) GetPiece(i uint) (kodr_internals.Piece, error) {
 	return d.state.GetPiece(i)
 }
 
 // GetPieces - Get a list of all decoded pieces, given full
 // decoding has happened
-func (d *FullRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
+func (d *FullRLNCDecoder) GetPieces() ([]kodr_internals.Piece, error) {
 	if !d.IsDecoded() {
 		return nil, kodr.ErrMoreUsefulPiecesRequired
 	}
 
-	pieces := make([]kodr.Piece, 0, d.useful)
+	pieces := make([]kodr_internals.Piece, 0, d.useful)
 	for i := 0; i < int(d.useful); i++ {
 		// error mustn't happen at this point, it should
 		// have been returned fromvery first `if-block` in function

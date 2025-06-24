@@ -2,12 +2,12 @@ package full
 
 import (
 	"github.com/cloud9-tools/go-galoisfield"
-	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 type FullRLNCEncoder struct {
 	field  *galoisfield.GF
-	pieces []kodr.Piece
+	pieces []kodr_internals.Piece
 	extra  uint
 }
 
@@ -60,13 +60,13 @@ func (f *FullRLNCEncoder) Padding() uint {
 // by randomly drawing elements from finite field i.e.
 // coding coefficients & performing full-RLNC with
 // all original pieces
-func (f *FullRLNCEncoder) CodedPiece() *kodr.CodedPiece {
-	vector := kodr.GenerateCodingVector(f.PieceCount())
-	piece := make(kodr.Piece, f.PieceSize())
+func (f *FullRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
+	vector := kodr_internals.GenerateCodingVector(f.PieceCount())
+	piece := make(kodr_internals.Piece, f.PieceSize())
 	for i := range f.pieces {
 		piece.Multiply(f.pieces[i], vector[i], f.field)
 	}
-	return &kodr.CodedPiece{
+	return &kodr_internals.CodedPiece{
 		Vector: vector,
 		Piece:  piece,
 	}
@@ -75,7 +75,7 @@ func (f *FullRLNCEncoder) CodedPiece() *kodr.CodedPiece {
 // Provide with original pieces on which fullRLNC to be performed
 // & get encoder, to be used for on-the-fly generation
 // to N-many coded pieces
-func NewFullRLNCEncoder(pieces []kodr.Piece) *FullRLNCEncoder {
+func NewFullRLNCEncoder(pieces []kodr_internals.Piece) *FullRLNCEncoder {
 	return &FullRLNCEncoder{pieces: pieces, field: galoisfield.DefaultGF256}
 }
 
@@ -84,7 +84,7 @@ func NewFullRLNCEncoder(pieces []kodr.Piece) *FullRLNCEncoder {
 // bytes appended at end of last piece, if required & prepares
 // full RLNC encoder for obtaining coded pieces
 func NewFullRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*FullRLNCEncoder, error) {
-	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
+	pieces, padding, err := kodr_internals.OriginalPiecesFromDataAndPieceCount(data, pieceCount)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func NewFullRLNCEncoderWithPieceCount(data []byte, pieceCount uint) (*FullRLNCEn
 // function generates M-many pieces each of N-bytes size, which are ready
 // to be coded together with full RLNC
 func NewFullRLNCEncoderWithPieceSize(data []byte, pieceSize uint) (*FullRLNCEncoder, error) {
-	pieces, padding, err := kodr.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
+	pieces, padding, err := kodr_internals.OriginalPiecesFromDataAndPieceSize(data, pieceSize)
 	if err != nil {
 		return nil, err
 	}

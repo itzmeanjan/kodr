@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 func BenchmarkFullRLNCRecoder(t *testing.B) {
@@ -46,7 +46,7 @@ func recode(t *testing.B, pieceCount uint, total uint) {
 		t.Fatalf("Error: %s\n", err.Error())
 	}
 
-	pieces := make([]*kodr.CodedPiece, 0, pieceCount)
+	pieces := make([]*kodr_internals.CodedPiece, 0, pieceCount)
 	for i := 0; i < int(pieceCount); i++ {
 		pieces = append(pieces, enc.CodedPiece())
 	}

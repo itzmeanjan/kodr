@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 func BenchmarkFullRLNCDecoder(t *testing.B) {
@@ -52,7 +52,7 @@ func decode(t *testing.B, pieceCount uint, total uint) {
 		t.Fatalf("Error: %s\n", err.Error())
 	}
 
-	pieces := make([]*kodr.CodedPiece, 0, 2*pieceCount)
+	pieces := make([]*kodr_internals.CodedPiece, 0, 2*pieceCount)
 	for i := 0; i < int(2*pieceCount); i++ {
 		pieces = append(pieces, enc.CodedPiece())
 	}
@@ -68,7 +68,7 @@ func decode(t *testing.B, pieceCount uint, total uint) {
 	t.ReportMetric(float64(totalDuration.Seconds())/float64(t.N), "second/decode")
 }
 
-func decode_(t *testing.B, pieceCount uint, pieces []*kodr.CodedPiece) time.Duration {
+func decode_(t *testing.B, pieceCount uint, pieces []*kodr_internals.CodedPiece) time.Duration {
 	dec := full.NewFullRLNCDecoder(pieceCount)
 
 	// randomly shuffle piece ordering

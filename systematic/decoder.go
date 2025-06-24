@@ -3,6 +3,7 @@ package systematic
 import (
 	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/matrix"
 )
 
@@ -44,7 +45,7 @@ func (s *SystematicRLNCDecoder) Required() uint {
 //
 // If all required pieces are already collected i.e. successful decoding
 // has happened --- new pieces to be discarded, with an error denoting same
-func (s *SystematicRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
+func (s *SystematicRLNCDecoder) AddPiece(piece *kodr_internals.CodedPiece) error {
 	if s.IsDecoded() {
 		return kodr.ErrAllUsefulPiecesReceived
 	}
@@ -70,17 +71,17 @@ func (s *SystematicRLNCDecoder) AddPiece(piece *kodr.CodedPiece) error {
 // then pieces with index in [0..M] ( remember upper bound exclusive )
 // can be attempted to be consumed, given algebric structure has revealed
 // requested piece at index `i`
-func (s *SystematicRLNCDecoder) GetPiece(i uint) (kodr.Piece, error) {
+func (s *SystematicRLNCDecoder) GetPiece(i uint) (kodr_internals.Piece, error) {
 	return s.state.GetPiece(i)
 }
 
 // All original pieces in order --- only when full decoding has happened
-func (s *SystematicRLNCDecoder) GetPieces() ([]kodr.Piece, error) {
+func (s *SystematicRLNCDecoder) GetPieces() ([]kodr_internals.Piece, error) {
 	if !s.IsDecoded() {
 		return nil, kodr.ErrMoreUsefulPiecesRequired
 	}
 
-	pieces := make([]kodr.Piece, 0, s.useful)
+	pieces := make([]kodr_internals.Piece, 0, s.useful)
 	for i := 0; i < int(s.useful); i++ {
 		piece, err := s.GetPiece(uint(i))
 		if err != nil {

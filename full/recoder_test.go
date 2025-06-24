@@ -9,9 +9,10 @@ import (
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
-func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, pieceCount int, pieces []kodr.Piece) {
+func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, pieceCount int, pieces []kodr_internals.Piece) {
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
 	for {
 		r_piece, err := rec.CodedPiece()
@@ -48,7 +49,7 @@ func TestNewFullRLNCRecoder(t *testing.T) {
 	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
 	enc := full.NewFullRLNCEncoder(pieces)
 
-	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
+	coded := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
 		coded = append(coded, enc.CodedPiece())
 	}
@@ -66,7 +67,7 @@ func TestNewFullRLNCRecoderWithFlattenData(t *testing.T) {
 	pieces := generatePieces(uint(pieceCount), uint(pieceLength))
 	enc := full.NewFullRLNCEncoder(pieces)
 
-	coded := make([]*kodr.CodedPiece, 0, codedPieceCount)
+	coded := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < codedPieceCount; i++ {
 		coded = append(coded, enc.CodedPiece())
 	}
