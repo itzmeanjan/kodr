@@ -1,7 +1,6 @@
 package full
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/kodr_internals/matrix"
@@ -108,7 +107,6 @@ func (d *FullRLNCDecoder) GetPieces() ([]kodr_internals.Piece, error) {
 // which is generally equal to original #-of pieces, decoded pieces
 // can be read back
 func NewFullRLNCDecoder(pieceCount uint) *FullRLNCDecoder {
-	gf := galoisfield.DefaultGF256
-	state := matrix.NewDecoderStateWithPieceCount(gf, pieceCount)
+	state := matrix.NewDecoderStateWithPieceCount(pieceCount)
 	return &FullRLNCDecoder{expected: pieceCount, state: state}
 }

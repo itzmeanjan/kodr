@@ -1,13 +1,12 @@
 package matrix
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/kodr_internals"
+	"github.com/itzmeanjan/kodr/kodr_internals/gf256"
 )
 
 type DecoderState struct {
-	field      *galoisfield.GF
 	pieceCount uint
 	coeffs     Matrix
 	coded      Matrix
@@ -61,13 +60,23 @@ func (d *DecoderState) clean_forward() {
 				continue
 			}
 
-			quotient := d.field.Div(d.coeffs[j][i], d.coeffs[i][i])
+			quotient, _ := gf256.New(d.coeffs[j][i]).Div(gf256.New(d.coeffs[i][i]))
 			for k := i; k < cols; k++ {
-				d.coeffs[j][k] = d.field.Add(d.coeffs[j][k], d.field.Mul(d.coeffs[i][k], quotient))
+				res := gf256.New(d.coeffs[j][k])
+
+				l := gf256.New(d.coeffs[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coeffs[j][k] = res.Get()
 			}
 
 			for k := 0; k < len(d.coded[0]); k++ {
-				d.coded[j][k] = d.field.Add(d.coded[j][k], d.field.Mul(d.coded[i][k], quotient))
+				res := gf256.New(d.coded[j][k])
+
+				l := gf256.New(d.coded[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coded[j][k] = res.Get()
 			}
 		}
 	}
@@ -90,13 +99,23 @@ func (d *DecoderState) clean_backward() {
 				continue
 			}
 
-			quotient := d.field.Div(d.coeffs[j][i], d.coeffs[i][i])
+			quotient, _ := gf256.New(d.coeffs[j][i]).Div(gf256.New(d.coeffs[i][i]))
 			for k := i; k < cols; k++ {
-				d.coeffs[j][k] = d.field.Add(d.coeffs[j][k], d.field.Mul(d.coeffs[i][k], quotient))
+				res := gf256.New(d.coeffs[j][k])
+
+				l := gf256.New(d.coeffs[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coeffs[j][k] = res.Get()
 			}
 
 			for k := 0; k < len(d.coded[0]); k++ {
-				d.coded[j][k] = d.field.Add(d.coded[j][k], d.field.Mul(d.coded[i][k], quotient))
+				res := gf256.New(d.coded[j][k])
+
+				l := gf256.New(d.coded[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coded[j][k] = res.Get()
 			}
 
 		}
@@ -105,18 +124,18 @@ func (d *DecoderState) clean_backward() {
 			continue
 		}
 
-		inv := d.field.Div(1, d.coeffs[i][i])
+		inv, _ := gf256.New(d.coeffs[i][i]).Inv()
 		d.coeffs[i][i] = 1
 		for j := i + 1; j < cols; j++ {
 			if d.coeffs[i][j] == 0 {
 				continue
 			}
 
-			d.coeffs[i][j] = d.field.Mul(d.coeffs[i][j], inv)
+			d.coeffs[i][j] = gf256.New(d.coeffs[i][j]).Mul(inv).Get()
 		}
 
 		for j := 0; j < len(d.coded[0]); j++ {
-			d.coded[i][j] = d.field.Mul(d.coded[i][j], inv)
+			d.coded[i][j] = gf256.New(d.coded[i][j]).Mul(inv).Get()
 		}
 	}
 }
@@ -248,12 +267,12 @@ OUT:
 	return buf, nil
 }
 
-func NewDecoderStateWithPieceCount(gf *galoisfield.GF, pieceCount uint) *DecoderState {
+func NewDecoderStateWithPieceCount(pieceCount uint) *DecoderState {
 	coeffs := make([][]byte, 0, pieceCount)
 	coded := make([][]byte, 0, pieceCount)
-	return &DecoderState{field: gf, pieceCount: pieceCount, coeffs: coeffs, coded: coded}
+	return &DecoderState{pieceCount: pieceCount, coeffs: coeffs, coded: coded}
 }
 
-func NewDecoderState(gf *galoisfield.GF, coeffs, coded Matrix) *DecoderState {
-	return &DecoderState{field: gf, pieceCount: uint(len(coeffs)), coeffs: coeffs, coded: coded}
+func NewDecoderState(coeffs, coded Matrix) *DecoderState {
+	return &DecoderState{pieceCount: uint(len(coeffs)), coeffs: coeffs, coded: coded}
 }

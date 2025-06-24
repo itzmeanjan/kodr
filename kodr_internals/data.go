@@ -5,8 +5,7 @@ import (
 	"math"
 
 	"github.com/itzmeanjan/kodr"
-
-	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr/kodr_internals/gf256"
 )
 
 // A piece of data is nothing but a byte array
@@ -17,9 +16,15 @@ type Piece []byte
 // a single byte is a symbol
 //
 // `by` is coding coefficient
-func (p *Piece) Multiply(piece Piece, by byte, field *galoisfield.GF) {
+func (p *Piece) Multiply(piece Piece, by byte) {
 	for i := range piece {
-		(*p)[i] = field.Add((*p)[i], field.Mul(piece[i], by))
+		res := gf256.New((*p)[i])
+
+		l := gf256.New(piece[i])
+		r := gf256.New(by)
+
+		res.AddAssign(l.Mul(r))
+		(*p)[i] = res.Get()
 	}
 }
 

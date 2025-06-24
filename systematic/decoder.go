@@ -1,7 +1,6 @@
 package systematic
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/kodr_internals/matrix"
@@ -102,7 +101,6 @@ func (s *SystematicRLNCDecoder) GetPieces() ([]kodr_internals.Piece, error) {
 // systematic coded pieces ( vectors )/ removing this
 // in some future date
 func NewSystematicRLNCDecoder(pieceCount uint) *SystematicRLNCDecoder {
-	gf := galoisfield.DefaultGF256
-	state := matrix.NewDecoderStateWithPieceCount(gf, pieceCount)
+	state := matrix.NewDecoderStateWithPieceCount(pieceCount)
 	return &SystematicRLNCDecoder{expected: pieceCount, state: state}
 }

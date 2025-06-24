@@ -1,13 +1,11 @@
 package systematic
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 type SystematicRLNCEncoder struct {
 	currentPieceId uint
-	field          *galoisfield.GF
 	pieces         []kodr_internals.Piece
 	extra          uint
 }
@@ -100,7 +98,7 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
 	vector := kodr_internals.GenerateCodingVector(s.PieceCount())
 	piece := make(kodr_internals.Piece, s.PieceSize())
 	for i := range s.pieces {
-		piece.Multiply(s.pieces[i], vector[i], s.field)
+		piece.Multiply(s.pieces[i], vector[i])
 	}
 	return &kodr_internals.CodedPiece{
 		Vector: vector,
@@ -113,7 +111,7 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
 // for creating one systematic RLNC encoder, which delivers coded pieces
 // on-the-fly
 func NewSystematicRLNCEncoder(pieces []kodr_internals.Piece) *SystematicRLNCEncoder {
-	return &SystematicRLNCEncoder{currentPieceId: 0, pieces: pieces, field: galoisfield.DefaultGF256}
+	return &SystematicRLNCEncoder{currentPieceId: 0, pieces: pieces}
 }
 
 // If you know #-of pieces you want to code together, invoking

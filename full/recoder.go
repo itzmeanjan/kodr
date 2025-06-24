@@ -1,13 +1,11 @@
 package full
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/kodr_internals/matrix"
 )
 
 type FullRLNCRecoder struct {
-	field        *galoisfield.GF
 	pieces       []*kodr_internals.CodedPiece
 	codingMatrix matrix.Matrix
 }
@@ -29,11 +27,11 @@ func (r *FullRLNCRecoder) CodedPiece() (*kodr_internals.CodedPiece, error) {
 	vector := kodr_internals.GenerateCodingVector(pieceCount)
 	piece := make(kodr_internals.Piece, len(r.pieces[0].Piece))
 	for i := range r.pieces {
-		piece.Multiply(r.pieces[i].Piece, vector[i], r.field)
+		piece.Multiply(r.pieces[i].Piece, vector[i])
 	}
 
 	vector_ := matrix.Matrix{vector}
-	mult, err := vector_.Multiply(r.field, r.codingMatrix)
+	mult, err := vector_.Multiply(r.codingMatrix)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +47,7 @@ func (r *FullRLNCRecoder) CodedPiece() (*kodr_internals.CodedPiece, error) {
 // & get back recoder which is used for on-the-fly construction
 // of N-many recoded pieces
 func NewFullRLNCRecoder(pieces []*kodr_internals.CodedPiece) *FullRLNCRecoder {
-	rec := &FullRLNCRecoder{field: galoisfield.DefaultGF256, pieces: pieces}
+	rec := &FullRLNCRecoder{pieces: pieces}
 	rec.fill()
 	return rec
 }

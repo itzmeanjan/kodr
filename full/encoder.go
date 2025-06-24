@@ -1,12 +1,10 @@
 package full
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 type FullRLNCEncoder struct {
-	field  *galoisfield.GF
 	pieces []kodr_internals.Piece
 	extra  uint
 }
@@ -64,7 +62,7 @@ func (f *FullRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
 	vector := kodr_internals.GenerateCodingVector(f.PieceCount())
 	piece := make(kodr_internals.Piece, f.PieceSize())
 	for i := range f.pieces {
-		piece.Multiply(f.pieces[i], vector[i], f.field)
+		piece.Multiply(f.pieces[i], vector[i])
 	}
 	return &kodr_internals.CodedPiece{
 		Vector: vector,
@@ -76,7 +74,7 @@ func (f *FullRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
 // & get encoder, to be used for on-the-fly generation
 // to N-many coded pieces
 func NewFullRLNCEncoder(pieces []kodr_internals.Piece) *FullRLNCEncoder {
-	return &FullRLNCEncoder{pieces: pieces, field: galoisfield.DefaultGF256}
+	return &FullRLNCEncoder{pieces: pieces}
 }
 
 // If you know #-of pieces you want to code together, invoking
