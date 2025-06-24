@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloud9-tools/go-galoisfield"
-	"github.com/itzmeanjan/kodr/matrix"
+	"github.com/itzmeanjan/kodr/kodr_internals/matrix"
 )
 
 // Note: If fill_with_zero is set, it's not really a random matrix

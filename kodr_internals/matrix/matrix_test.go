@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
-	"github.com/itzmeanjan/kodr/matrix"
+	"github.com/itzmeanjan/kodr/kodr_internals/matrix"
 )
 
 func TestMatrixRref(t *testing.T) {
