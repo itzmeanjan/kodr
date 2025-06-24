@@ -52,10 +52,9 @@ func (m *Matrix) Multiply(with Matrix) (Matrix, error) {
 		mult[i] = make([]byte, with.Cols())
 	}
 
-	for i := 0; i < int(m.Rows()); i++ {
-		for j := 0; j < int(with.Cols()); j++ {
-
-			for k := 0; k < int(m.Cols()); k++ {
+	for i := range m.Rows() {
+		for j := range with.Cols() {
+			for k := range m.Cols() {
 				res := gf256.New(mult[i][j])
 
 				l := gf256.New((*m)[i][k])
@@ -64,7 +63,6 @@ func (m *Matrix) Multiply(with Matrix) (Matrix, error) {
 				res.AddAssign(l.Mul(r))
 				mult[i][j] = res.Get()
 			}
-
 		}
 	}
 

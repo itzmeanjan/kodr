@@ -3,9 +3,7 @@ package full_test
 import (
 	"bytes"
 	"errors"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
@@ -33,7 +31,7 @@ func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, pieceCount int, pieces
 		t.Fatal("didn't decode all !")
 	}
 
-	for i := 0; i < pieceCount; i++ {
+	for i := range pieceCount {
 		if !bytes.Equal(pieces[i], d_pieces[i]) {
 			t.Fatal("decoded data doesn't match !")
 		}
@@ -41,8 +39,6 @@ func recoderFlow(t *testing.T, rec *full.FullRLNCRecoder, pieceCount int, pieces
 }
 
 func TestNewFullRLNCRecoder(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	pieceCount := 128
 	pieceLength := 8192
 	codedPieceCount := pieceCount + 2
@@ -50,7 +46,7 @@ func TestNewFullRLNCRecoder(t *testing.T) {
 	enc := full.NewFullRLNCEncoder(pieces)
 
 	coded := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
-	for i := 0; i < codedPieceCount; i++ {
+	for range codedPieceCount {
 		coded = append(coded, enc.CodedPiece())
 	}
 
@@ -59,8 +55,6 @@ func TestNewFullRLNCRecoder(t *testing.T) {
 }
 
 func TestNewFullRLNCRecoderWithFlattenData(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	pieceCount := 128
 	pieceLength := 8192
 	codedPieceCount := pieceCount + 2
@@ -68,12 +62,12 @@ func TestNewFullRLNCRecoderWithFlattenData(t *testing.T) {
 	enc := full.NewFullRLNCEncoder(pieces)
 
 	coded := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
-	for i := 0; i < codedPieceCount; i++ {
+	for range codedPieceCount {
 		coded = append(coded, enc.CodedPiece())
 	}
 
 	codedFlattened := make([]byte, 0)
-	for i := 0; i < len(coded); i++ {
+	for i := range coded {
 		codedFlattened = append(codedFlattened, coded[i].Flatten()...)
 	}
 

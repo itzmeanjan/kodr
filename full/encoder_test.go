@@ -2,11 +2,11 @@ package full_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"math"
-	"math/rand"
+	math_rand "math/rand"
 	"testing"
-	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
@@ -17,7 +17,6 @@ import (
 // randomization source
 func generateData(n uint) []byte {
 	data := make([]byte, n)
-	// can safely ignore error
 	rand.Read(data)
 	return data
 }
@@ -26,7 +25,7 @@ func generateData(n uint) []byte {
 // for testing purposes
 func generatePieces(pieceCount uint, pieceLength uint) []kodr_internals.Piece {
 	pieces := make([]kodr_internals.Piece, 0, pieceCount)
-	for i := 0; i < int(pieceCount); i++ {
+	for range pieceCount {
 		pieces = append(pieces, generateData(pieceLength))
 	}
 	return pieces
@@ -34,12 +33,12 @@ func generatePieces(pieceCount uint, pieceLength uint) []kodr_internals.Piece {
 
 func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPieceCount int, pieces []kodr_internals.Piece) {
 	coded := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
-	for i := 0; i < codedPieceCount; i++ {
+	for range codedPieceCount {
 		coded = append(coded, enc.CodedPiece())
 	}
 
 	dec := full.NewFullRLNCDecoder(uint(pieceCount))
-	for i := 0; i < codedPieceCount; i++ {
+	for i := range codedPieceCount {
 		if i < pieceCount {
 			if _, err := dec.GetPieces(); !(err != nil && errors.Is(err, kodr.ErrMoreUsefulPiecesRequired)) {
 				t.Fatal("expected error indicating more pieces are required for decoding")
@@ -55,7 +54,7 @@ func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPiece
 		t.Fatal("expected to be fully decoded !")
 	}
 
-	for i := 0; i < codedPieceCount-pieceCount; i++ {
+	for i := range codedPieceCount - pieceCount {
 		if err := dec.AddPiece(coded[pieceCount+i]); !(err != nil && errors.Is(err, kodr.ErrAllUsefulPiecesReceived)) {
 			t.Fatal("expected error indication, received nothing !")
 		}
@@ -70,7 +69,7 @@ func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPiece
 		t.Fatal("didn't decode all !")
 	}
 
-	for i := 0; i < pieceCount; i++ {
+	for i := range pieceCount {
 		if !bytes.Equal(pieces[i], d_pieces[i]) {
 			t.Fatal("decoded data doesn't match !")
 		}
@@ -78,8 +77,6 @@ func encoderFlow(t *testing.T, enc *full.FullRLNCEncoder, pieceCount, codedPiece
 }
 
 func TestNewFullRLNCEncoder(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	pieceCount := 128
 	pieceLength := 8192
 	codedPieceCount := pieceCount + 2
@@ -90,10 +87,8 @@ func TestNewFullRLNCEncoder(t *testing.T) {
 }
 
 func TestNewFullRLNCEncoderWithPieceCount(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
-	size := uint(2<<10 + rand.Intn(2<<10))
-	pieceCount := uint(2<<1 + rand.Intn(2<<8))
+	size := uint(2<<10 + math_rand.Intn(2<<10))
+	pieceCount := uint(2<<1 + math_rand.Intn(2<<8))
 	codedPieceCount := pieceCount + 2
 	data := generateData(size)
 	t.Logf("\nTotal Data: %d bytes\nPiece Count: %d\nCoded Piece Count: %d\n", size, pieceCount, codedPieceCount)
@@ -112,10 +107,8 @@ func TestNewFullRLNCEncoderWithPieceCount(t *testing.T) {
 }
 
 func TestNewFullRLNCEncoderWithPieceSize(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
-	size := uint(2<<10 + rand.Intn(2<<10))
-	pieceSize := uint(2<<5 + rand.Intn(2<<5))
+	size := uint(2<<10 + math_rand.Intn(2<<10))
+	pieceSize := uint(2<<5 + math_rand.Intn(2<<5))
 	pieceCount := int(math.Ceil(float64(size) / float64(pieceSize)))
 	codedPieceCount := pieceCount + 2
 	data := generateData(size)
@@ -135,12 +128,10 @@ func TestNewFullRLNCEncoderWithPieceSize(t *testing.T) {
 }
 
 func TestFullRLNCEncoderPadding(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	t.Run("WithPieceCount", func(t *testing.T) {
 		for i := 0; i < 1<<5; i++ {
-			size := uint(2<<10 + rand.Intn(2<<10))
-			pieceCount := uint(2<<1 + rand.Intn(2<<8))
+			size := uint(2<<10 + math_rand.Intn(2<<10))
+			pieceCount := uint(2<<1 + math_rand.Intn(2<<8))
 			data := generateData(size)
 
 			enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
@@ -159,8 +150,8 @@ func TestFullRLNCEncoderPadding(t *testing.T) {
 
 	t.Run("WithPieceSize", func(t *testing.T) {
 		for i := 0; i < 1<<5; i++ {
-			size := uint(2<<10 + rand.Intn(2<<10))
-			pieceSize := uint(2<<5 + rand.Intn(2<<5))
+			size := uint(2<<10 + math_rand.Intn(2<<10))
+			pieceSize := uint(2<<5 + math_rand.Intn(2<<5))
 			pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
 			data := generateData(size)
 
@@ -180,11 +171,9 @@ func TestFullRLNCEncoderPadding(t *testing.T) {
 }
 
 func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	t.Run("WithPieceCount", func(t *testing.T) {
-		size := uint(2<<10 + rand.Intn(2<<10))
-		pieceCount := uint(2<<1 + rand.Intn(2<<8))
+		size := uint(2<<10 + math_rand.Intn(2<<10))
+		pieceCount := uint(2<<1 + math_rand.Intn(2<<8))
 		data := generateData(size)
 
 		enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
@@ -201,8 +190,8 @@ func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
 	})
 
 	t.Run("WithPieceSize", func(t *testing.T) {
-		size := uint(2<<10 + rand.Intn(2<<10))
-		pieceSize := uint(2<<5 + rand.Intn(2<<5))
+		size := uint(2<<10 + math_rand.Intn(2<<10))
+		pieceSize := uint(2<<5 + math_rand.Intn(2<<5))
 		pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
 		data := generateData(size)
 
@@ -221,14 +210,12 @@ func TestFullRLNCEncoder_CodedPieceLen(t *testing.T) {
 }
 
 func TestFullRLNCEncoder_DecodableLen(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	flow := func(enc *full.FullRLNCEncoder, dec *full.FullRLNCDecoder) {
 		consumed_len := uint(0)
 		for !dec.IsDecoded() {
 			c_piece := enc.CodedPiece()
 			// randomly drop piece
-			if rand.Intn(2) == 0 {
+			if math_rand.Intn(2) == 0 {
 				continue
 			}
 			if err := dec.AddPiece(c_piece); errors.Is(err, kodr.ErrAllUsefulPiecesReceived) {
@@ -245,8 +232,8 @@ func TestFullRLNCEncoder_DecodableLen(t *testing.T) {
 	}
 
 	t.Run("WithPieceCount", func(t *testing.T) {
-		size := uint(2<<10 + rand.Intn(2<<10))
-		pieceCount := uint(2<<1 + rand.Intn(2<<8))
+		size := uint(2<<10 + math_rand.Intn(2<<10))
+		pieceCount := uint(2<<1 + math_rand.Intn(2<<8))
 		data := generateData(size)
 
 		enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
@@ -259,8 +246,8 @@ func TestFullRLNCEncoder_DecodableLen(t *testing.T) {
 	})
 
 	t.Run("WithPieceSize", func(t *testing.T) {
-		size := uint(2<<10 + rand.Intn(2<<10))
-		pieceSize := uint(2<<5 + rand.Intn(2<<5))
+		size := uint(2<<10 + math_rand.Intn(2<<10))
+		pieceSize := uint(2<<5 + math_rand.Intn(2<<5))
 		pieceCount := uint(math.Ceil(float64(size) / float64(pieceSize)))
 		data := generateData(size)
 

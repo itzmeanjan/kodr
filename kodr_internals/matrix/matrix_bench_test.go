@@ -1,9 +1,8 @@
 package matrix_test
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"testing"
-	"time"
 
 	"github.com/itzmeanjan/kodr/kodr_internals/matrix"
 )
@@ -11,7 +10,8 @@ import (
 // Note: If fill_with_zero is set, it's not really a random matrix
 func random_matrix(rows, cols int, fill_with_zero bool) [][]byte {
 	mat := make([][]byte, 0, rows)
-	for i := 0; i < rows; i++ {
+
+	for range rows {
 		row := make([]byte, cols)
 		// already filled with zero
 		if !fill_with_zero {
@@ -23,8 +23,6 @@ func random_matrix(rows, cols int, fill_with_zero bool) [][]byte {
 }
 
 func BenchmarkMatrixRref(b *testing.B) {
-	rand.Seed(time.Now().UnixNano())
-
 	b.Run("2x2", func(b *testing.B) { rref(b, 1<<1) })
 	b.Run("4x4", func(b *testing.B) { rref(b, 1<<2) })
 	b.Run("8x8", func(b *testing.B) { rref(b, 1<<3) })
@@ -38,14 +36,16 @@ func BenchmarkMatrixRref(b *testing.B) {
 }
 
 func rref(b *testing.B, dim int) {
-	b.ResetTimer()
 	b.SetBytes(int64(dim*dim) << 1)
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
+		b.StopTimer()
 		coeffs := random_matrix(dim, dim, false)
 		coded := random_matrix(dim, dim, true)
 		d_state := matrix.NewDecoderState(coeffs, coded)
+		b.StartTimer()
+
 		d_state.Rref()
 	}
 }

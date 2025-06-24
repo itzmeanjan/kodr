@@ -12,13 +12,6 @@ type DecoderState struct {
 	coded      Matrix
 }
 
-func min(a, b int) int {
-	if a <= b {
-		return a
-	}
-	return b
-}
-
 func (d *DecoderState) clean_forward() {
 	var (
 		rows     int = int(d.coeffs.Rows())
@@ -26,7 +19,7 @@ func (d *DecoderState) clean_forward() {
 		boundary int = min(rows, cols)
 	)
 
-	for i := 0; i < boundary; i++ {
+	for i := range boundary {
 		if d.coeffs[i][i] == 0 {
 			non_zero_col := false
 			pivot := i + 1
@@ -147,7 +140,7 @@ func (d *DecoderState) remove_zero_rows() {
 
 	for i := 0; i < len(d.coeffs); i++ {
 		yes := true
-		for j := 0; j < cols; j++ {
+		for j := range cols {
 			if d.coeffs[i][j] != 0 {
 				yes = false
 				break
@@ -241,7 +234,7 @@ func (d *DecoderState) GetPiece(idx uint) (kodr_internals.Piece, error) {
 	decoded := true
 
 OUT:
-	for i := 0; i < cols; i++ {
+	for i := range cols {
 		switch i {
 		case int(idx):
 			if d.coeffs[idx][i] != 1 {

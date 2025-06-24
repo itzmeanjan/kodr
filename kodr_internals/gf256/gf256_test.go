@@ -11,7 +11,7 @@ import (
 func TestGf256Operations(t *testing.T) {
 	const numTestIterations = 100_000
 
-	for i := 0; i < numTestIterations; i++ {
+	for range numTestIterations {
 		// Generate random Gf256 elements
 		a := gf256.Random()
 		b := gf256.Random()

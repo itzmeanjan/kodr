@@ -5,7 +5,6 @@ import (
 	"errors"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/kodr_internals"
@@ -13,8 +12,6 @@ import (
 )
 
 func TestNewSystematicRLNCDecoder(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	var (
 		pieceCount  uint                              = 128
 		pieceLength uint                              = 8192

@@ -81,13 +81,15 @@ func (s *SystematicRLNCDecoder) GetPieces() ([]kodr_internals.Piece, error) {
 	}
 
 	pieces := make([]kodr_internals.Piece, 0, s.useful)
-	for i := 0; i < int(s.useful); i++ {
-		piece, err := s.GetPiece(uint(i))
+	for i := range s.useful {
+		piece, err := s.GetPiece(i)
 		if err != nil {
 			return nil, err
 		}
+
 		pieces = append(pieces, piece)
 	}
+
 	return pieces, nil
 }
 

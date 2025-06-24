@@ -63,7 +63,7 @@ func (c *CodedPiece) Flatten() []byte {
 // non-zero element ( 1 )
 func (c *CodedPiece) IsSystematic() bool {
 	pos := -1
-	for i := 0; i < len(c.Vector); i++ {
+	for i := range len(c.Vector) {
 		switch c.Vector[i] {
 		case 0:
 			continue
@@ -79,6 +79,7 @@ func (c *CodedPiece) IsSystematic() bool {
 
 		}
 	}
+
 	return pos >= 0 && pos < len(c.Vector)
 }
 
@@ -142,7 +143,7 @@ func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece,
 		return nil, 0, kodr.ErrPieceCountMoreThanTotalBytes
 	}
 
-	pieceSize := uint(math.Ceil(float64(len(data)) / float64(pieceCount)))
+	pieceSize := (uint(len(data)) + (pieceCount - 1)) / pieceCount
 	padding := pieceCount*pieceSize - uint(len(data))
 
 	var data_ []byte

@@ -97,9 +97,11 @@ func (s *SystematicRLNCEncoder) CodedPiece() *kodr_internals.CodedPiece {
 
 	vector := kodr_internals.GenerateCodingVector(s.PieceCount())
 	piece := make(kodr_internals.Piece, s.PieceSize())
+
 	for i := range s.pieces {
 		piece.Multiply(s.pieces[i], vector[i])
 	}
+
 	return &kodr_internals.CodedPiece{
 		Vector: vector,
 		Piece:  piece,

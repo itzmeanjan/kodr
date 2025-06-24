@@ -12,10 +12,12 @@ type FullRLNCRecoder struct {
 
 func (r *FullRLNCRecoder) fill() {
 	codingMatrix := make(matrix.Matrix, len(r.pieces))
-	for i := 0; i < len(r.pieces); i++ {
+	
+	for i := range r.pieces {
 		codingMatrix[i] = make([]byte, len(r.pieces[i].Vector))
 		copy(codingMatrix[i], r.pieces[i].Vector)
 	}
+
 	r.codingMatrix = codingMatrix
 }
 
@@ -26,6 +28,7 @@ func (r *FullRLNCRecoder) CodedPiece() (*kodr_internals.CodedPiece, error) {
 	pieceCount := uint(len(r.pieces))
 	vector := kodr_internals.GenerateCodingVector(pieceCount)
 	piece := make(kodr_internals.Piece, len(r.pieces[0].Piece))
+	
 	for i := range r.pieces {
 		piece.Multiply(r.pieces[i].Piece, vector[i])
 	}
@@ -49,6 +52,7 @@ func (r *FullRLNCRecoder) CodedPiece() (*kodr_internals.CodedPiece, error) {
 func NewFullRLNCRecoder(pieces []*kodr_internals.CodedPiece) *FullRLNCRecoder {
 	rec := &FullRLNCRecoder{pieces: pieces}
 	rec.fill()
+
 	return rec
 }
 
