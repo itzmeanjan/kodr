@@ -19,4 +19,10 @@ jobs:
         go-version: 1.24
 
     - name: Run all tests
-      run: go test -v -cover -count=10 ./...
+      run: go test -v -cover -count=10 ./...    
+
+    - name: Run Full RLNC example
+      run: pushd examples/full; go run main.go; popd
+
+    - name: Run Systematic RLNC example
+      run: pushd examples/systematic; go run main.go; popd
