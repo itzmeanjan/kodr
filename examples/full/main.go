@@ -2,25 +2,20 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha512"
+	"crypto/sha3"
 	"encoding/hex"
 	"errors"
 	"log"
 	"math/rand"
 	"os"
 	"path"
-	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 func main() {
-	// setting up random number generator seed using time as source
-	// so that RLNC's coding coefficients are generated randomly
-	// on every run
-	rand.Seed(time.Now().UnixNano())
-
 	img := path.Join("..", "..", "img", "logo.png")
 	log.Printf("Reading from %s\n", img)
 	data, err := os.ReadFile(img)
@@ -31,10 +26,10 @@ func main() {
 
 	log.Printf("Read %d bytes\n", len(data))
 
-	hasher := sha512.New512_224()
+	hasher := sha3.New256()
 	hasher.Write(data)
-	sum := hasher.Sum(nil)
-	log.Printf("SHA512: 0x%s\n\n", hex.EncodeToString(sum))
+	originalSum := hasher.Sum(nil)
+	log.Printf("SHA3-256: 0x%s\n\n", hex.EncodeToString(originalSum))
 
 	var (
 		pieceCount        uint = 64
@@ -49,7 +44,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	codedPieces := make([]*kodr.CodedPiece, 0, codedPieceCount)
+	codedPieces := make([]*kodr_internals.CodedPiece, 0, codedPieceCount)
 	for i := 0; i < int(codedPieceCount); i++ {
 		codedPieces = append(codedPieces, enc.CodedPiece())
 	}
@@ -71,7 +66,7 @@ func main() {
 	)
 
 	rec := full.NewFullRLNCRecoder(codedPieces)
-	recodedPieces := make([]*kodr.CodedPiece, 0, recodedPieceCount)
+	recodedPieces := make([]*kodr_internals.CodedPiece, 0, recodedPieceCount)
 	for i := 0; i < int(recodedPieceCount); i++ {
 		rec_p, err := rec.CodedPiece()
 		if err != nil {
@@ -133,8 +128,12 @@ func main() {
 
 	hasher.Reset()
 	hasher.Write(decoded_data[:len(data)])
-	sum = hasher.Sum(nil)
-	log.Printf("SHA512: 0x%s\n", hex.EncodeToString(sum))
+	recoveredSum := hasher.Sum(nil)
+	log.Printf("SHA3-256: 0x%s\n", hex.EncodeToString(recoveredSum))
+
+	if !bytes.Equal(originalSum, recoveredSum) {
+		log.Fatalln("SHA3-256 digest of original data and recovered data doesn't match !")
+	}
 
 	if err := os.WriteFile("recovered.png", decoded_data[:len(data)], 0o644); err != nil {
 		log.Printf("Error: %s\n", err.Error())

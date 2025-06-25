@@ -1,12 +1,10 @@
 package full_test
 
 import (
-	"math/rand"
 	"testing"
-	"time"
 
-	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
+	"github.com/itzmeanjan/kodr/kodr_internals"
 )
 
 func BenchmarkFullRLNCRecoder(t *testing.B) {
@@ -36,33 +34,26 @@ func BenchmarkFullRLNCRecoder(t *testing.B) {
 }
 
 func recode(t *testing.B, pieceCount uint, total uint) {
-	// non-reproducible sequence
-	rand.Seed(time.Now().UnixNano())
-
-	// -- encode
-	data := generateData(total)
+	// Encode
+	data := generateRandomData(total)
 	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err.Error())
 	}
 
-	pieces := make([]*kodr.CodedPiece, 0, pieceCount)
-	for i := 0; i < int(pieceCount); i++ {
+	pieces := make([]*kodr_internals.CodedPiece, 0, pieceCount)
+	for range pieceCount {
 		pieces = append(pieces, enc.CodedPiece())
 	}
-	// -- encoding ends
 
-	// -- recode
+	// Recode
 	rec := full.NewFullRLNCRecoder(pieces)
 
 	t.ReportAllocs()
 	t.SetBytes(int64((pieceCount+total/pieceCount)*pieceCount) + int64(pieceCount+total/pieceCount))
 	t.ResetTimer()
 
-	for i := 0; i < t.N; i++ {
-		if _, err := rec.CodedPiece(); err != nil {
-			t.Fatalf("Error: %s\n", err.Error())
-		}
+	for t.Loop() {
+		rec.CodedPiece()
 	}
-	// -- recoding ends
 }

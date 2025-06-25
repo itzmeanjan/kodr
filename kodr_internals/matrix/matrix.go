@@ -1,8 +1,8 @@
 package matrix
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals/gf256"
 )
 
 type Matrix [][]byte
@@ -42,7 +42,7 @@ func (m *Matrix) Cols() uint {
 
 // Multiplies two matrices ( which can be multiplied )
 // in order `m x with`
-func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) (Matrix, error) {
+func (m *Matrix) Multiply(with Matrix) (Matrix, error) {
 	if m.Cols() != with.Rows() {
 		return nil, kodr.ErrMatrixDimensionMismatch
 	}
@@ -52,13 +52,17 @@ func (m *Matrix) Multiply(field *galoisfield.GF, with Matrix) (Matrix, error) {
 		mult[i] = make([]byte, with.Cols())
 	}
 
-	for i := 0; i < int(m.Rows()); i++ {
-		for j := 0; j < int(with.Cols()); j++ {
+	for i := range m.Rows() {
+		for j := range with.Cols() {
+			for k := range m.Cols() {
+				res := gf256.New(mult[i][j])
 
-			for k := 0; k < int(m.Cols()); k++ {
-				mult[i][j] = field.Add(mult[i][j], field.Mul((*m)[i][k], with[k][j]))
+				l := gf256.New((*m)[i][k])
+				r := gf256.New(with[k][j])
+
+				res.AddAssign(l.Mul(r))
+				mult[i][j] = res.Get()
 			}
-
 		}
 	}
 

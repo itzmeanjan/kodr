@@ -1,22 +1,15 @@
 package matrix
 
 import (
-	"github.com/cloud9-tools/go-galoisfield"
 	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals"
+	"github.com/itzmeanjan/kodr/kodr_internals/gf256"
 )
 
 type DecoderState struct {
-	field      *galoisfield.GF
 	pieceCount uint
 	coeffs     Matrix
 	coded      Matrix
-}
-
-func min(a, b int) int {
-	if a <= b {
-		return a
-	}
-	return b
 }
 
 func (d *DecoderState) clean_forward() {
@@ -26,7 +19,7 @@ func (d *DecoderState) clean_forward() {
 		boundary int = min(rows, cols)
 	)
 
-	for i := 0; i < boundary; i++ {
+	for i := range boundary {
 		if d.coeffs[i][i] == 0 {
 			non_zero_col := false
 			pivot := i + 1
@@ -60,13 +53,23 @@ func (d *DecoderState) clean_forward() {
 				continue
 			}
 
-			quotient := d.field.Div(d.coeffs[j][i], d.coeffs[i][i])
+			quotient, _ := gf256.New(d.coeffs[j][i]).Div(gf256.New(d.coeffs[i][i]))
 			for k := i; k < cols; k++ {
-				d.coeffs[j][k] = d.field.Add(d.coeffs[j][k], d.field.Mul(d.coeffs[i][k], quotient))
+				res := gf256.New(d.coeffs[j][k])
+
+				l := gf256.New(d.coeffs[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coeffs[j][k] = res.Get()
 			}
 
 			for k := 0; k < len(d.coded[0]); k++ {
-				d.coded[j][k] = d.field.Add(d.coded[j][k], d.field.Mul(d.coded[i][k], quotient))
+				res := gf256.New(d.coded[j][k])
+
+				l := gf256.New(d.coded[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coded[j][k] = res.Get()
 			}
 		}
 	}
@@ -89,13 +92,23 @@ func (d *DecoderState) clean_backward() {
 				continue
 			}
 
-			quotient := d.field.Div(d.coeffs[j][i], d.coeffs[i][i])
+			quotient, _ := gf256.New(d.coeffs[j][i]).Div(gf256.New(d.coeffs[i][i]))
 			for k := i; k < cols; k++ {
-				d.coeffs[j][k] = d.field.Add(d.coeffs[j][k], d.field.Mul(d.coeffs[i][k], quotient))
+				res := gf256.New(d.coeffs[j][k])
+
+				l := gf256.New(d.coeffs[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coeffs[j][k] = res.Get()
 			}
 
 			for k := 0; k < len(d.coded[0]); k++ {
-				d.coded[j][k] = d.field.Add(d.coded[j][k], d.field.Mul(d.coded[i][k], quotient))
+				res := gf256.New(d.coded[j][k])
+
+				l := gf256.New(d.coded[i][k])
+				res.AddAssign(l.Mul(quotient))
+
+				d.coded[j][k] = res.Get()
 			}
 
 		}
@@ -104,18 +117,18 @@ func (d *DecoderState) clean_backward() {
 			continue
 		}
 
-		inv := d.field.Div(1, d.coeffs[i][i])
+		inv, _ := gf256.New(d.coeffs[i][i]).Inv()
 		d.coeffs[i][i] = 1
 		for j := i + 1; j < cols; j++ {
 			if d.coeffs[i][j] == 0 {
 				continue
 			}
 
-			d.coeffs[i][j] = d.field.Mul(d.coeffs[i][j], inv)
+			d.coeffs[i][j] = gf256.New(d.coeffs[i][j]).Mul(inv).Get()
 		}
 
 		for j := 0; j < len(d.coded[0]); j++ {
-			d.coded[i][j] = d.field.Mul(d.coded[i][j], inv)
+			d.coded[i][j] = gf256.New(d.coded[i][j]).Mul(inv).Get()
 		}
 	}
 }
@@ -127,7 +140,7 @@ func (d *DecoderState) remove_zero_rows() {
 
 	for i := 0; i < len(d.coeffs); i++ {
 		yes := true
-		for j := 0; j < cols; j++ {
+		for j := range cols {
 			if d.coeffs[i][j] != 0 {
 				yes = false
 				break
@@ -189,7 +202,7 @@ func (d *DecoderState) CodedPieceMatrix() Matrix {
 // Adds a new coded piece to decoder state, which will hopefully
 // help in decoding pieces, if linearly independent with other rows
 // i.e. read pieces
-func (d *DecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
+func (d *DecoderState) AddPiece(codedPiece *kodr_internals.CodedPiece) {
 	d.coeffs = append(d.coeffs, codedPiece.Vector)
 	d.coded = append(d.coded, codedPiece.Piece)
 }
@@ -199,13 +212,13 @@ func (d *DecoderState) AddPiece(codedPiece *kodr.CodedPiece) {
 // If piece not yet decoded/ requested index is >= #-of
 // pieces coded together, returns error message indicating so
 //
-// Otherwise piece is returned, without any error
+// # Otherwise piece is returned, without any error
 //
 // Note: This method will copy decoded piece into newly allocated memory
 // when whole decoding hasn't yet happened, to prevent any chance
 // that user mistakenly modifies slice returned ( read piece )
 // & that affects next round of decoding ( when new piece is received )
-func (d *DecoderState) GetPiece(idx uint) (kodr.Piece, error) {
+func (d *DecoderState) GetPiece(idx uint) (kodr_internals.Piece, error) {
 	if idx >= d.pieceCount {
 		return nil, kodr.ErrPieceOutOfBound
 	}
@@ -221,7 +234,7 @@ func (d *DecoderState) GetPiece(idx uint) (kodr.Piece, error) {
 	decoded := true
 
 OUT:
-	for i := 0; i < cols; i++ {
+	for i := range cols {
 		switch i {
 		case int(idx):
 			if d.coeffs[idx][i] != 1 {
@@ -247,12 +260,12 @@ OUT:
 	return buf, nil
 }
 
-func NewDecoderStateWithPieceCount(gf *galoisfield.GF, pieceCount uint) *DecoderState {
+func NewDecoderStateWithPieceCount(pieceCount uint) *DecoderState {
 	coeffs := make([][]byte, 0, pieceCount)
 	coded := make([][]byte, 0, pieceCount)
-	return &DecoderState{field: gf, pieceCount: pieceCount, coeffs: coeffs, coded: coded}
+	return &DecoderState{pieceCount: pieceCount, coeffs: coeffs, coded: coded}
 }
 
-func NewDecoderState(gf *galoisfield.GF, coeffs, coded Matrix) *DecoderState {
-	return &DecoderState{field: gf, pieceCount: uint(len(coeffs)), coeffs: coeffs, coded: coded}
+func NewDecoderState(coeffs, coded Matrix) *DecoderState {
+	return &DecoderState{pieceCount: uint(len(coeffs)), coeffs: coeffs, coded: coded}
 }

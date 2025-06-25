@@ -1,10 +1,11 @@
-package kodr
+package kodr_internals
 
 import (
 	"crypto/rand"
 	"math"
 
-	"github.com/cloud9-tools/go-galoisfield"
+	"github.com/itzmeanjan/kodr"
+	"github.com/itzmeanjan/kodr/kodr_internals/gf256"
 )
 
 // A piece of data is nothing but a byte array
@@ -15,9 +16,15 @@ type Piece []byte
 // a single byte is a symbol
 //
 // `by` is coding coefficient
-func (p *Piece) Multiply(piece Piece, by byte, field *galoisfield.GF) {
+func (p *Piece) Multiply(piece Piece, by byte) {
 	for i := range piece {
-		(*p)[i] = field.Add((*p)[i], field.Mul(piece[i], by))
+		res := gf256.New((*p)[i])
+
+		l := gf256.New(piece[i])
+		r := gf256.New(by)
+
+		res.AddAssign(l.Mul(r))
+		(*p)[i] = res.Get()
 	}
 }
 
@@ -56,7 +63,7 @@ func (c *CodedPiece) Flatten() []byte {
 // non-zero element ( 1 )
 func (c *CodedPiece) IsSystematic() bool {
 	pos := -1
-	for i := 0; i < len(c.Vector); i++ {
+	for i := range len(c.Vector) {
 		switch c.Vector[i] {
 		case 0:
 			continue
@@ -72,6 +79,7 @@ func (c *CodedPiece) IsSystematic() bool {
 
 		}
 	}
+
 	return pos >= 0 && pos < len(c.Vector)
 }
 
@@ -94,11 +102,11 @@ func GenerateCodingVector(n uint) CodingVector {
 // each piece must be of same size
 func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, uint, error) {
 	if pieceSize == 0 {
-		return nil, 0, ErrZeroPieceSize
+		return nil, 0, kodr.ErrZeroPieceSize
 	}
 
 	if int(pieceSize) >= len(data) {
-		return nil, 0, ErrBadPieceCount
+		return nil, 0, kodr.ErrBadPieceCount
 	}
 
 	pieceCount := int(math.Ceil(float64(len(data)) / float64(pieceSize)))
@@ -108,7 +116,7 @@ func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, u
 	if padding > 0 {
 		data_ = make([]byte, pieceCount*int(pieceSize))
 		if n := copy(data_, data); n != len(data) {
-			return nil, 0, ErrCopyFailedDuringPieceConstruction
+			return nil, 0, kodr.ErrCopyFailedDuringPieceConstruction
 		}
 	} else {
 		data_ = data
@@ -128,21 +136,21 @@ func OriginalPiecesFromDataAndPieceSize(data []byte, pieceSize uint) ([]Piece, u
 // if exact division is not feasible
 func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece, uint, error) {
 	if pieceCount < 2 {
-		return nil, 0, ErrBadPieceCount
+		return nil, 0, kodr.ErrBadPieceCount
 	}
 
 	if int(pieceCount) > len(data) {
-		return nil, 0, ErrPieceCountMoreThanTotalBytes
+		return nil, 0, kodr.ErrPieceCountMoreThanTotalBytes
 	}
 
-	pieceSize := uint(math.Ceil(float64(len(data)) / float64(pieceCount)))
+	pieceSize := (uint(len(data)) + (pieceCount - 1)) / pieceCount
 	padding := pieceCount*pieceSize - uint(len(data))
 
 	var data_ []byte
 	if padding > 0 {
 		data_ = make([]byte, pieceSize*pieceCount)
 		if n := copy(data_, data); n != len(data) {
-			return nil, 0, ErrCopyFailedDuringPieceConstruction
+			return nil, 0, kodr.ErrCopyFailedDuringPieceConstruction
 		}
 	} else {
 		data_ = data
@@ -165,11 +173,11 @@ func OriginalPiecesFromDataAndPieceCount(data []byte, pieceCount uint) ([]Piece,
 func CodedPiecesForRecoding(data []byte, pieceCount uint, piecesCodedTogether uint) ([]*CodedPiece, error) {
 	codedPieceLength := len(data) / int(pieceCount)
 	if codedPieceLength*int(pieceCount) != len(data) {
-		return nil, ErrCodedDataLengthMismatch
+		return nil, kodr.ErrCodedDataLengthMismatch
 	}
 
 	if !(piecesCodedTogether < uint(codedPieceLength)) {
-		return nil, ErrCodingVectorLengthMismatch
+		return nil, kodr.ErrCodingVectorLengthMismatch
 	}
 
 	codedPieces := make([]*CodedPiece, pieceCount)

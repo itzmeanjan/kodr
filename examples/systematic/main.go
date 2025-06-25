@@ -1,14 +1,14 @@
 package main
 
 import (
-	"crypto/sha512"
+	"bytes"
+	"crypto/sha3"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log"
 	"math/rand"
 	"os"
-	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/systematic"
@@ -23,11 +23,12 @@ type Data struct {
 
 // Generates random byte array of size N
 func generateData(n uint) []byte {
-	_container := make([]byte, 0, n)
-	for i := 0; i < int(n); i++ {
-		_container = append(_container, byte(rand.Intn(255)))
+	container := make([]byte, 0, n)
+	for range n {
+		container = append(container, byte(rand.Intn(255)))
 	}
-	return _container
+
+	return container
 }
 
 // Generates random `Data` i.e. values associated with
@@ -43,9 +44,8 @@ func randData() *Data {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	data := randData()
+
 	m_data, err := json.Marshal(&data)
 	if err != nil {
 		log.Printf("Error: %s\n", err.Error())
@@ -53,10 +53,10 @@ func main() {
 	}
 	log.Printf("Original serialised data of %d bytes\n", len(m_data))
 
-	hasher := sha512.New512_256()
+	hasher := sha3.New256()
 	hasher.Write(m_data)
-	sum := hasher.Sum(nil)
-	log.Printf("SHA512(original): 0x%s\n", hex.EncodeToString(sum))
+	originalSum := hasher.Sum(nil)
+	log.Printf("SHA3-256(original): 0x%s\n", hex.EncodeToString(originalSum))
 
 	var (
 		pieceSize uint = 1 << 3 // in bytes
@@ -94,7 +94,7 @@ func main() {
 	}
 
 	d_flattened := make([]byte, 0, len(m_data)+int(enc.Padding()))
-	for i := 0; i < len(d_pieces); i++ {
+	for i := range d_pieces {
 		d_flattened = append(d_flattened, d_pieces[i]...)
 	}
 
@@ -103,8 +103,12 @@ func main() {
 
 	hasher.Reset()
 	hasher.Write(d_flattened)
-	sum = hasher.Sum(nil)
-	log.Printf("SHA512(recovered): 0x%s\n", hex.EncodeToString(sum))
+	recoveredSum := hasher.Sum(nil)
+	log.Printf("SHA3-256(recovered): 0x%s\n", hex.EncodeToString(recoveredSum))
+
+	if !bytes.Equal(originalSum, recoveredSum) {
+		log.Fatalln("SHA3-256 digest of original data and recovered data doesn't match !")
+	}
 
 	var rec_data Data
 	if err := json.Unmarshal(d_flattened, &rec_data); err != nil {
