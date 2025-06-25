@@ -28,8 +28,8 @@ func main() {
 
 	hasher := sha3.New256()
 	hasher.Write(data)
-	sum := hasher.Sum(nil)
-	log.Printf("SHA3-256: 0x%s\n\n", hex.EncodeToString(sum))
+	originalSum := hasher.Sum(nil)
+	log.Printf("SHA3-256: 0x%s\n\n", hex.EncodeToString(originalSum))
 
 	var (
 		pieceCount        uint = 64
@@ -128,8 +128,12 @@ func main() {
 
 	hasher.Reset()
 	hasher.Write(decoded_data[:len(data)])
-	sum = hasher.Sum(nil)
-	log.Printf("SHA3-256: 0x%s\n", hex.EncodeToString(sum))
+	recoveredSum := hasher.Sum(nil)
+	log.Printf("SHA3-256: 0x%s\n", hex.EncodeToString(recoveredSum))
+
+	if !bytes.Equal(originalSum, recoveredSum) {
+		log.Fatalln("SHA3-256 digest of original data and recovered data doesn't match !")
+	}
 
 	if err := os.WriteFile("recovered.png", decoded_data[:len(data)], 0o644); err != nil {
 		log.Printf("Error: %s\n", err.Error())

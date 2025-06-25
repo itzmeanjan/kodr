@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha3"
 	"encoding/hex"
 	"encoding/json"
@@ -44,6 +45,7 @@ func randData() *Data {
 
 func main() {
 	data := randData()
+
 	m_data, err := json.Marshal(&data)
 	if err != nil {
 		log.Printf("Error: %s\n", err.Error())
@@ -53,8 +55,8 @@ func main() {
 
 	hasher := sha3.New256()
 	hasher.Write(m_data)
-	sum := hasher.Sum(nil)
-	log.Printf("SHA3-256(original): 0x%s\n", hex.EncodeToString(sum))
+	originalSum := hasher.Sum(nil)
+	log.Printf("SHA3-256(original): 0x%s\n", hex.EncodeToString(originalSum))
 
 	var (
 		pieceSize uint = 1 << 3 // in bytes
@@ -101,8 +103,12 @@ func main() {
 
 	hasher.Reset()
 	hasher.Write(d_flattened)
-	sum = hasher.Sum(nil)
-	log.Printf("SHA3-256(recovered): 0x%s\n", hex.EncodeToString(sum))
+	recoveredSum := hasher.Sum(nil)
+	log.Printf("SHA3-256(recovered): 0x%s\n", hex.EncodeToString(recoveredSum))
+
+	if !bytes.Equal(originalSum, recoveredSum) {
+		log.Fatalln("SHA3-256 digest of original data and recovered data doesn't match !")
+	}
 
 	var rec_data Data
 	if err := json.Unmarshal(d_flattened, &rec_data); err != nil {
