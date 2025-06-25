@@ -44,41 +44,40 @@ func BenchmarkFullRLNCDecoder(t *testing.B) {
 }
 
 func decode(t *testing.B, pieceCount uint, total uint) {
-	rand.Seed(time.Now().UnixNano())
+	data := generateRandomData(total)
 
-	data := generateData(total)
 	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err.Error())
 	}
 
 	pieces := make([]*kodr_internals.CodedPiece, 0, 2*pieceCount)
-	for i := 0; i < int(2*pieceCount); i++ {
+	for range 2 * pieceCount {
 		pieces = append(pieces, enc.CodedPiece())
 	}
 
 	t.ResetTimer()
 
 	totalDuration := 0 * time.Second
-	for i := 0; i < t.N; i++ {
-		totalDuration += decode_(t, pieceCount, pieces)
+	for t.Loop() {
+		totalDuration += decode_internal(t, pieceCount, pieces)
 	}
 
 	t.ReportMetric(0, "ns/op")
 	t.ReportMetric(float64(totalDuration.Seconds())/float64(t.N), "second/decode")
 }
 
-func decode_(t *testing.B, pieceCount uint, pieces []*kodr_internals.CodedPiece) time.Duration {
+func decode_internal(t *testing.B, pieceCount uint, pieces []*kodr_internals.CodedPiece) time.Duration {
 	dec := full.NewFullRLNCDecoder(pieceCount)
 
-	// randomly shuffle piece ordering
-	rand.Shuffle(int(2*pieceCount), func(i, j int) {
+	// Random shuffle piece ordering
+	rand.Shuffle(len(pieces), func(i, j int) {
 		pieces[i], pieces[j] = pieces[j], pieces[i]
 	})
 
 	totalDuration := 0 * time.Second
-	for j := 0; j < int(2*pieceCount); j++ {
-		if j+1 >= int(pieceCount) && dec.IsDecoded() {
+	for j := range 2 * pieceCount {
+		if j+1 >= pieceCount && dec.IsDecoded() {
 			break
 		}
 
@@ -88,7 +87,7 @@ func decode_(t *testing.B, pieceCount uint, pieces []*kodr_internals.CodedPiece)
 	}
 
 	if !dec.IsDecoded() {
-		t.Fatal("expected pieces to be decoded")
+		t.Fatal("expected pieces to be already decoded")
 	}
 
 	return totalDuration

@@ -1,9 +1,8 @@
 package full_test
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"testing"
-	"time"
 
 	"github.com/itzmeanjan/kodr/full"
 )
@@ -34,32 +33,27 @@ func BenchmarkFullRLNCEncoder(t *testing.B) {
 	})
 }
 
-// generate random data of N-bytes
-func generateData(n uint) []byte {
+// Generate random data of N-bytes
+func generateRandomData(n uint) []byte {
 	data := make([]byte, n)
-	// can safely ignore error
 	rand.Read(data)
+
 	return data
 }
 
 func encode(t *testing.B, pieceCount uint, total uint) {
-	// non-reproducible random number sequence
-	rand.Seed(time.Now().UnixNano())
+	data := generateRandomData(total)
 
-	data := generateData(total)
 	enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err.Error())
 	}
 
 	t.ReportAllocs()
-	// because pieceSize = total / pieceCount
-	// so each coded piece = pieceCount + pieceSize bytes
-	t.SetBytes(int64(total) + int64(pieceCount+total/pieceCount))
+	t.SetBytes(int64(total+enc.Padding()) + int64(enc.CodedPieceLen()))
 	t.ResetTimer()
 
-	// keep generating encoded pieces on-the-fly
-	for i := 0; i < t.N; i++ {
+	for t.Loop() {
 		enc.CodedPiece()
 	}
 }
