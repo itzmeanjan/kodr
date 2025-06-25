@@ -5,19 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/itzmeanjan/kodr/full"
 	"github.com/itzmeanjan/kodr/kodr_internals"
 	"github.com/itzmeanjan/kodr/systematic"
 )
 
-func BenchmarkFullRLNCDecoder(t *testing.B) {
+func BenchmarkSystematicRLNCDecoder(t *testing.B) {
 	t.Run("1M", func(b *testing.B) {
 		b.Run("16Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<20) })
 		b.Run("32Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<20) })
 		b.Run("64Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<20) })
 		b.Run("128Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<20) })
 		b.Run("256Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<20) })
-		b.Run("512Pieces", func(b *testing.B) { decode(b, 1<<9, 1<<20) })
 	})
 
 	t.Run("2M", func(b *testing.B) {
@@ -26,7 +24,22 @@ func BenchmarkFullRLNCDecoder(t *testing.B) {
 		b.Run("64Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<21) })
 		b.Run("128Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<21) })
 		b.Run("256Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<21) })
-		b.Run("512Pieces", func(b *testing.B) { decode(b, 1<<9, 1<<21) })
+	})
+
+	t.Run("16M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<24) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<24) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<24) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<24) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<24) })
+	})
+
+	t.Run("32M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<25) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<25) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<25) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<25) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<25) })
 	})
 }
 
@@ -56,7 +69,7 @@ func decode(t *testing.B, pieceCount uint, total uint) {
 }
 
 func decode_(t *testing.B, pieceCount uint, pieces []*kodr_internals.CodedPiece) time.Duration {
-	dec := full.NewFullRLNCDecoder(pieceCount)
+	dec := systematic.NewSystematicRLNCDecoder(pieceCount)
 
 	// randomly shuffle piece ordering
 	rand.Shuffle(int(2*pieceCount), func(i, j int) {
