@@ -6,9 +6,9 @@ Random Linear Network Coding
 
 ## Motivation
 
-For sometime now I've been exploring **R**andom **L**inear **N**etwork **C**oding & while looking for implementation(s) of RLNC-based schemes I didn't find a stable & maintained library in *Golang*, which made me take up this venture of writing **kodr**.
+When I started looking into erasure coding techniques, I found many implementations of traditional block codes like Reed-Solomon codes or fountain codes like Raptor codes, though no implementation of **R**andom **L**inear **N**etwork **C**odes (RLNC) - which motivated me to take up this venture of writing **kodr**. I think RLNC is a great fit for large scale decentralized systems where peers talk to each other, store and retrieve data themselves, by crawling the Distributed Hash Table (DHT). I've a series of blogs on why RLNC is great, it begins @ https://itzmeanjan.in/pages/understanding-rlnc.html.
 
-There are different kinds of RLNC, each useful for certain application domain, the choice of using one comes with some tradeoffs. For now only ✅ marked variants are implemented, though the goal is to eventually implement all of them ⏳.
+There are different variants of RLNC, each useful for certain application domain, the choice of using one comes with some tradeoffs. For now only ✅ marked variants are implemented in this package, though the goal is to eventually implement all of them ⏳.
 
 - Full RLNC ✅
 - Systematic RLNC ✅
@@ -17,20 +17,18 @@ There are different kinds of RLNC, each useful for certain application domain, t
 - Generational RLNC
 - Caterpillar RLNC
 
-This library provides easy to use API for encoding, recoding and decoding of arbitrary length data.
-
-## Background
-
-For learning about RLNC you may want to go through my [post](https://itzmeanjan.in/pages/rlnc-in-depth.html). **kodr** interprets each byte of data as an element of finite field $GF(2^8)$. Why?
+For learning basics of RLNC, you may want to go through my old blog post @ https://itzmeanjan.in/pages/rlnc-in-depth.html. During encoding, recoding and decoding, **kodr** interprets each byte of data as an element of finite field $GF(2^8)$. Why?
 
 - It's a good choice because from performance & memory consumption point of view, $GF(2^8)$ keeps a nice balance.
 - Working on larger finite field indeed decreases the chance of (randomly) generating linearly dependent pieces (which are useless during decoding), but requires more costly computation & if finite field operations are implemented using lookup tables then memory consumption increases to a great extent.
 - On the other hand, working on $GF(2)$, a much smaller field, increases the chance of generating linearly dependent pieces, though with sophisticated design like Fulcrum codes, they can be proved to be beneficial. 
 - Another point is the larger the finite field, the higher is the cost of storing random sampled coding vectors.
 
+This library provides easy to use API for encoding, recoding and decoding of arbitrary length data.
+
 ## Installation
 
-Assuming you have Golang (>=1.24) installed, add **kodr** as an dependency to your project, which uses *GOMOD* for dependency management purposes, by executing
+Assuming you have Golang (>=1.24) installed, add **kodr** as a dependency to your project,
 
 ```bash
 go get -u github.com/itzmeanjan/kodr/...
@@ -63,11 +61,9 @@ go test -run=xxx -bench=Decoder ./benches/systematic
 ```
 
 > [!NOTE]
-> RLNC Decoder performance denotes each round of full data reconstruction from N-many coded pieces taking `X second(s)`, on average. It's clearly visible in following pictures that decoding complexity keeps increasing very fast as we increase number of pieces.
+> RLNC Decoder performance denotes, average time required for full data reconstruction from N-many coded pieces. From following tables, it's clear that, for a specific size of message, decoding complexity keeps increasing very fast as we increase number of pieces.
 
-### On 12th Gen Intel(R) Core(TM) i7-1260P
-
-**Full RLNC**
+### Full RLNC
 
 ```bash
 goos: linux
@@ -117,7 +113,7 @@ PASS
 ok  	github.com/itzmeanjan/kodr/benches/full	66.481s
 ```
 
-Notice how with small piece count decoding time stays afforable, for large messages.
+Notice, how, with small number of pieces, decoding time stays afforable, even for large messages.
 
 ```bash
 goos: linux
@@ -148,7 +144,7 @@ PASS
 ok  	github.com/itzmeanjan/kodr/benches/full	214.901s
 ```
 
-**Systematic RLNC**
+### Systematic RLNC
 
 ```bash
 goos: linux
@@ -169,7 +165,7 @@ PASS
 ok  	github.com/itzmeanjan/kodr/benches/systematic	68.564s
 ```
 
-Systematic RLNC Decoder has an advantage over Full RLNC Decoder - because it may get some pieces which are actually uncoded, just augmented to be coded, it doesn't need to process those pieces. Rather it'll use uncoded pieces to decode other coded pieces much faster.
+Systematic RLNC Decoder has an advantage over Full RLNC Decoder - as it may get some pieces which are actually uncoded, just augmented to be coded, it doesn't need to process those pieces. Rather it'll use uncoded pieces to decode other coded pieces much faster.
 
 ```bash
 goos: linux
@@ -202,176 +198,62 @@ ok  	github.com/itzmeanjan/kodr/benches/systematic	195.287s
 
 ## Usage
 
-Examples demonstrating how to use API exposed by **kodr** for _( currently )_ supported RLNC schemes.
-
-> In each walk through, code snippets are prepended with line numbers, denoting actual line numbers in respective file.
-
----
+Following examples demonstrate how to use Random Linear Network Coding (RLNC) API exposed by **kodr**.
 
 ### Full RLNC
 
-**Example:** `example/full/main.go`
+**Example program:** [examples/full/main.go](./examples/full/main.go)
 
-Let's start by seeding random number generator with current unix timestamp with nanosecond level precision.
-
-```go
-22| rand.Seed(time.Now().UnixNano())
-```
-
-I read **kodr** [logo](#kodr), which is a PNG file, into in-memory byte array of length 3965 & compute SHA512 hash : `0xee9ec63a713ab67d82e0316d24ea646f7c5fb745ede9c462580eca5f`
-
-```go
-24| img := path.Join("..", "..", "img", "logo.png")
-
-...
-
-37| log.Printf("SHA512: 0x%s\n\n", hex.EncodeToString(sum))
-```
-
-I decide to split it into 64 pieces ( each of equal length ) & perform full RLNC, resulting into 128 coded pieces.
-
-```go
-45| log.Printf("Coding %d pieces together\n", pieceCount)
-46| enc, err := full.NewFullRLNCEncoderWithPieceCount(data, pieceCount)
-
-...
-
-57| log.Printf("Coded into %d pieces\n", codedPieceCount)
-```
-
-Then I randomly drop 32 coded pieces, simulating these are lost/ dropped. I've 96 remaining pieces, which I recode into 192 coded pieces. I random shuffle those 192 coded pieces to simulate that their reception order can arbitrarily vary. Then I randomly drop 96 pieces, leaving me with other 96 pieces.
-
-```go
-59| for i := 0; i < int(droppedPieceCount); i++ {
-
-...
-
-98| log.Printf("Dropped %d pieces, remaining %d pieces\n\n", recodedPieceCount/2, len(recodedPieces))
-```
-
-Now I create a decoder which expects to receive 64 linearly independent pieces so that it can fully construct back **kodr** logo. I've 96 pieces, with no idea whether they're linearly independent or not, still I start decoding.
-
-```go
-101| dec := full.NewFullRLNCDecoder(pieceCount)
-```
-
-Courageously I just add 64 coded pieces into decoder & hope all of those will be linearly independent --- turns out to be so. 
-
-> This is the power of RLNC, where random coding coefficients do same job as other specially crafted codes.
-
-Just a catch, decoded data's length is more than 3965 bytes.
-
-```go
-124| log.Printf("Decoded into %d bytes\n", len(decoded_data)) // 3968 bytes
-```
-
-This is due to fact, I asked **kodr** to split original 3965 bytes into 64 pieces & code them together, but turns out 3965 is not properly divisible by 64, which is why **kodr** decided to append 3 extra bytes at end --- making it 3968 bytes. This way **kodr** splitted whole image into 64 equal sized pieces, where each piece size is 62 bytes.
-
-So, SHA512-ing first 3965 bytes of decoded data slice must be equal to `0xee9ec63a713ab67d82e0316d24ea646f7c5fb745ede9c462580eca5f` --- and it's so.
-
-```go
-131| log.Printf("First %d bytes of decoded data matches original %d bytes\n", len(data), len(data))
-
-...
-
-137| log.Printf("SHA512: 0x%s\n", hex.EncodeToString(sum))
-```
-
-Finally I write back reconstructed image into PNG file.
-
-```go
-139| if err := os.WriteFile("recovered.png", decoded_data[:len(data)], 0o644); err != nil {
-
-...
-```
+- Read image into memory.
+- Split in-memory image data into 64 equal length pieces, full RLNC code them, get 128 coded pieces.
+- Randomly drop 32 of those coded pieces, use remaining 96 of them, to recode into 192 coded pieces.
+- Random shuffle those, drop 96 of those, work with remaining 96 coded pieces, simulating reception of those pieces at reconstruction site.
+- RLNC decoder takes first 64 linearly independent coded pieces to reconstruct original data.
+- Computing a cryptographic message digest over both original image and decoded image, results in the same digest.
 
 For running this example
 
 ```bash
-# assuming you're in root directory of `kodr`
-cd example/full
+pushd examples/full
 go run main.go
+popd
 ```
 
-This should generate `example/full/recovered.png`, which is exactly same as `img/logo.png`.
+```bash
+2025/06/25 13:14:10 Reading from ../../img/logo.png
+2025/06/25 13:14:10 Read 3965 bytes
+2025/06/25 13:14:10 SHA3-256: 0x73de1a7f05fa9db95302ae9041ca423539b8d45e36be937fd99becf74229d29e
+
+2025/06/25 13:14:10 Coding 64 pieces together
+2025/06/25 13:14:10 Coded into 128 pieces
+2025/06/25 13:14:10 Dropped 32 pieces, remaining 96 pieces
+
+2025/06/25 13:14:10 Recoded 96 coded pieces into 192 pieces
+2025/06/25 13:14:10 Shuffled 192 coded pieces
+2025/06/25 13:14:10 Dropped 96 pieces, remaining 96 pieces
+
+2025/06/25 13:14:10 Decoding with 64 pieces
+2025/06/25 13:14:10 Decoded into 3968 bytes
+2025/06/25 13:14:10 First 3965 bytes of decoded data matches original 3965 bytes
+2025/06/25 13:14:10 3 bytes of padding: [0 0 0]
+
+2025/06/25 13:14:10 SHA3-256: 0x73de1a7f05fa9db95302ae9041ca423539b8d45e36be937fd99becf74229d29e
+2025/06/25 13:14:10 Wrote 3965 bytes into `./recovered.png`
+```
+
+This should generate `examples/full/recovered.png`, which is exactly same as `img/logo.png`.
 
 ---
 
 ### Systematic RLNC
 
-**Example: `example/systematic/main.go`**
+**Example program:** [examples/systematic/main.go](./examples/systematic/main.go)
 
-I start by seeding random number generator with device's nanosecond precision time
-
-```go
-46| rand.Seed(time.Now().UnixNano())
-```
-
-I define one structure for storing randomly generated values, which I serialise to JSON.
-
-```go
-17| type Data struct {
-.	FieldA uint    `json:"fieldA"`
-.	FieldB float64 `json:"fieldB"`
-.	FieldC bool    `json:"fieldC"`
-.	FieldD []byte  `json:"fieldD"`
-22| }
-```
-
-For filling up this structure, I invoke random data generator
-
-```go
-48| data := randData()
-```
-
-I calculate SHA512 hash of JSON serialised data, which turns out to be `0x25c37651f7a567963a884ef04d7dc6df0901ab58ca28aa3eaf31097e5d9155d4` in this run.
-
-```go
-56| hasher := sha512.New512_256()
-
-.
-.
-
-59| log.Printf("SHA512(original): 0x%s\n", hex.EncodeToString(sum))
-```
-
-I decide to split serialised data into N-many pieces, each of length 8 bytes.
-
-```go
-61| var (
-62|		pieceSize uint = 1 << 3 // in bytes
-63| )
-
-65| enc, err := systematic.NewSystematicRLNCEncoderWithPieceSize(m_data, pieceSize)
-66| if err != nil { /* exit */ }
-```
-
-So I've generated 2474 bytes of JSON serialised data, which after splitting into equal sized byte slices ( read original pieces ), I get 310 pieces --- pieces which are to be coded together. It requires me to append 6 empty bytes --- `8 x 310 - 6 = 2480 - 6 = 2474 bytes`
-
-Systematic encoder also informs me, I need to consume 98580 bytes of coded data to construct original pieces i.e. original JSON serialised data.
-
-I simulate some pieces collected, while some are dropped
-
-```go
-75| dec := systematic.NewSystematicRLNCDecoder(enc.PieceCount())
-76| for {
-	c_piece := enc.CodedPiece()
-
-	// simulating piece drop/ loss
-	if rand.Intn(2) == 0 {
-		continue
-	}
-
-	err := dec.AddPiece(c_piece)
-    ...
-88| }
-```
-
-> Note: As these pieces are coded using systematic encoder, first N-many pieces ( here N = 310 ), are kept uncoded though they're augmented to be coded by providing with coding vector which has only one non-zero element. Next coded pieces i.e. >310th carry randomly generated coding vectors as usual.
-
-I'm able to recover 2480 bytes of serialised data, but notice, padding is counted. So I strip out last 6 padding bytes, which results into 2474 bytes of serialised data. Computing SHA512 on recovered data must produce same hash as found with original data.
-
-And it's indeed same hash `0x25c37651f7a567963a884ef04d7dc6df0901ab58ca28aa3eaf31097e5d9155d4` --- asserting reconstructed data is same as original data, when padding bytes stripped out.
+- Random generate some values, filling fields of a struct, which can be serialized to JSON.
+- Split JSON serialized data into N pieces, each of size 8 -bytes.
+- Use systematic RLNC coder to encode these pieces s.t. first N-many pieces (here N = 310), are kept uncoded though they're augmented to be coded by providing with coding vector which has only one non-zero element. Next coded pieces i.e. >310th, carry randomly generated coding vectors as usual.
+- Simulate loss of some coded pieces, by randomly selecting which piece to use for decoding.
+- Computing a cryptographic message digest over both original JSON serialized data and recovered data, results in the same digest.
 
 For running this example
 
@@ -379,4 +261,15 @@ For running this example
 pushd examples/systematic
 go run main.go
 popd
+```
+
+```bash
+2025/06/25 13:14:24 Original serialised data of 2438 bytes
+2025/06/25 13:14:24 SHA3-256(original): 0xd321ed51df0c5119acc3e73ce7bc5ea7ae3c92900387eb65445006b924b8f5da
+2025/06/25 13:14:24 305 pieces being coded together, each of 8 bytes
+2025/06/25 13:14:24 2 bytes of padding used
+
+2025/06/25 13:14:24 95465 bytes of coded data to be consumed for successful decoding
+2025/06/25 13:14:24 Recovered 2440 ( = 2438 + 2 ) bytes flattened data
+2025/06/25 13:14:24 SHA3-256(recovered): 0xd321ed51df0c5119acc3e73ce7bc5ea7ae3c92900387eb65445006b924b8f5da
 ```
