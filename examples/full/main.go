@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha512"
+	"crypto/sha3"
 	"encoding/hex"
 	"errors"
 	"log"
 	"math/rand"
 	"os"
 	"path"
-	"time"
 
 	"github.com/itzmeanjan/kodr"
 	"github.com/itzmeanjan/kodr/full"
@@ -17,11 +16,6 @@ import (
 )
 
 func main() {
-	// setting up random number generator seed using time as source
-	// so that RLNC's coding coefficients are generated randomly
-	// on every run
-	rand.Seed(time.Now().UnixNano())
-
 	img := path.Join("..", "..", "img", "logo.png")
 	log.Printf("Reading from %s\n", img)
 	data, err := os.ReadFile(img)
@@ -32,10 +26,10 @@ func main() {
 
 	log.Printf("Read %d bytes\n", len(data))
 
-	hasher := sha512.New512_224()
+	hasher := sha3.New256()
 	hasher.Write(data)
 	sum := hasher.Sum(nil)
-	log.Printf("SHA512: 0x%s\n\n", hex.EncodeToString(sum))
+	log.Printf("SHA3-256: 0x%s\n\n", hex.EncodeToString(sum))
 
 	var (
 		pieceCount        uint = 64
@@ -135,7 +129,7 @@ func main() {
 	hasher.Reset()
 	hasher.Write(decoded_data[:len(data)])
 	sum = hasher.Sum(nil)
-	log.Printf("SHA512: 0x%s\n", hex.EncodeToString(sum))
+	log.Printf("SHA3-256: 0x%s\n", hex.EncodeToString(sum))
 
 	if err := os.WriteFile("recovered.png", decoded_data[:len(data)], 0o644); err != nil {
 		log.Printf("Error: %s\n", err.Error())
