@@ -10,22 +10,6 @@ import (
 )
 
 func BenchmarkFullRLNCDecoder(t *testing.B) {
-	t.Run("256K", func(b *testing.B) {
-		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<18) })
-		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<18) })
-		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<18) })
-		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<18) })
-		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<18) })
-	})
-
-	t.Run("512K", func(b *testing.B) {
-		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<19) })
-		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<19) })
-		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<19) })
-		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<19) })
-		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<19) })
-	})
-
 	t.Run("1M", func(b *testing.B) {
 		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<20) })
 		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<20) })
@@ -40,6 +24,22 @@ func BenchmarkFullRLNCDecoder(t *testing.B) {
 		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<21) })
 		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<21) })
 		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<21) })
+	})
+
+	t.Run("16M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<24) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<24) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<24) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<24) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<24) })
+	})
+
+	t.Run("32M", func(b *testing.B) {
+		b.Run("16 Pieces", func(b *testing.B) { decode(b, 1<<4, 1<<25) })
+		b.Run("32 Pieces", func(b *testing.B) { decode(b, 1<<5, 1<<25) })
+		b.Run("64 Pieces", func(b *testing.B) { decode(b, 1<<6, 1<<25) })
+		b.Run("128 Pieces", func(b *testing.B) { decode(b, 1<<7, 1<<25) })
+		b.Run("256 Pieces", func(b *testing.B) { decode(b, 1<<8, 1<<25) })
 	})
 }
 
